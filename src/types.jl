@@ -1,6 +1,11 @@
 abstract Optimizer
-abstract ConstrainedOptimizer <: Optimizer
-abstract IPOptimizer <: ConstrainedOptimizer
+#abstract ConstrainedOptimizer <: Optimizer
+#abstract IPOptimizer <: ConstrainedOptimizer
+abstract ConstrainedOptimizer{T} <: Optimizer
+abstract IPOptimizer{T} <: ConstrainedOptimizer  # interior point methods
+
+abstract AbstractOptimFunction
+
 immutable Options{TCallback <: Union{Void, Function}}
     x_tol::Float64
     f_tol::Float64
@@ -13,6 +18,7 @@ immutable Options{TCallback <: Union{Void, Function}}
     show_every::Int
     callback::TCallback
     time_limit::Float64
+    μfactor::Float64
 end
 
 function Options(;
@@ -26,7 +32,8 @@ function Options(;
         autodiff::Bool = false,
         show_every::Integer = 1,
         callback = nothing,
-        time_limit = NaN)
+        time_limit = NaN,
+        μfactor = 0.1)
     show_every = show_every > 0 ? show_every: 1
     if extended_trace && callback == nothing
         show_trace = true
@@ -34,7 +41,7 @@ function Options(;
     Options{typeof(callback)}(
         Float64(x_tol), Float64(f_tol), Float64(g_tol), Int(iterations),
         store_trace, show_trace, extended_trace, autodiff, Int(show_every),
-        callback, time_limit)
+        callback, time_limit, μfactor)
 end
 
 function print_header(options::Options)
@@ -45,6 +52,10 @@ end
 
 function print_header(method::Optimizer)
         @printf "Iter     Function value   Gradient norm \n"
+end
+
+function print_header(method::IPOptimizer)
+        @printf "Iter     Lagrangian value Function value   Gradient norm    μ\n"
 end
 
 immutable OptimizationState{T <: Optimizer}
@@ -92,17 +103,17 @@ type UnivariateOptimizationResults{T,M} <: OptimizationResults
     f_calls::Int
 end
 
-immutable NonDifferentiableFunction
+immutable NonDifferentiableFunction <: AbstractOptimFunction
     f::Function
 end
 
-immutable DifferentiableFunction
+immutable DifferentiableFunction <: AbstractOptimFunction
     f::Function
     g!::Function
     fg!::Function
 end
 
-immutable TwiceDifferentiableFunction
+immutable TwiceDifferentiableFunction <: AbstractOptimFunction
     f::Function
     g!::Function
     fg!::Function
@@ -119,9 +130,30 @@ function Base.show(io::IO, t::OptimizationState)
     return
 end
 
+function Base.show{M<:IPOptimizer}(io::IO, t::OptimizationState{M})
+    md = t.metadata
+    @printf io "%6d   %-14e   %-14e   %-14e   %-6.2e\n" t.iteration md["Lagrangian"] t.value t.g_norm md["μ"]
+    if !isempty(t.metadata)
+        for (key, value) in md
+            key ∈ ("Lagrangian", "μ") && continue
+            @printf io " * %s: %s\n" key value
+        end
+    end
+    return
+end
+
 function Base.show(io::IO, tr::OptimizationTrace)
     @printf io "Iter     Function value   Gradient norm \n"
     @printf io "------   --------------   --------------\n"
+    for state in tr
+        show(io, state)
+    end
+    return
+end
+
+function Base.show{M<:IPOptimizer}(io::IO, tr::OptimizationTrace{M})
+    @printf io "Iter     Lagrangian value Function value   Gradient norm    μ\n"
+    @printf io "------   ---------------- --------------   --------------   --------\n"
     for state in tr
         show(io, state)
     end

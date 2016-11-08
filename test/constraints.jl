@@ -94,7 +94,7 @@ ConstraintBounds:
         cfun = x->Float64[]
         c = Float64[]
         J = Array{Float64}(0,0)
-        options = OptimizationOptions()
+        options = Optim.Options()
         method = Optim.IPNewton()
         ## In the code, variable constraints are special-cased (for
         ## reasons of user-convenience and efficiency).  It's
@@ -283,7 +283,7 @@ ConstraintBounds:
         F = 1000
         d = TwiceDifferentiableFunction(x->F*x[1], (x,g) -> (g[1] = F), (x,h) -> (h[1,1] = 0))
         method = Optim.IPNewton()
-        options = OptimizationOptions()
+        options = Optim.Options()
         μ = 1e-20
         x0 = μ/F*10  # minimum is at μ/F
         # Nonnegativity (the case that doesn't require slack variables)
@@ -316,7 +316,7 @@ ConstraintBounds:
         # boundary).
         F0 = 1000
         method = Optim.IPNewton()
-        options = OptimizationOptions()
+        options = Optim.Options()
         μ = 1e-20   # smaller than eps(1.0)
         for σ in (1, -1)
             F = σ*F0
