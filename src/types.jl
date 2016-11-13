@@ -10,6 +10,7 @@ immutable Options{TCallback <: Union{Void, Function}}
     x_tol::Float64
     f_tol::Float64
     g_tol::Float64
+    successive_f_tol::Int
     iterations::Int
     store_trace::Bool
     show_trace::Bool
@@ -25,6 +26,7 @@ function Options(;
         x_tol::Real = 1e-32,
         f_tol::Real = 1e-32,
         g_tol::Real = 1e-8,
+        successive_f_tol::Integer = 2,
         iterations::Integer = 1_000,
         store_trace::Bool = false,
         show_trace::Bool = false,
@@ -39,9 +41,9 @@ function Options(;
         show_trace = true
     end
     Options{typeof(callback)}(
-        Float64(x_tol), Float64(f_tol), Float64(g_tol), Int(iterations),
-        store_trace, show_trace, extended_trace, autodiff, Int(show_every),
-        callback, time_limit, μfactor)
+        Float64(x_tol), Float64(f_tol), Float64(g_tol), Int(successive_f_tol),
+        Int(iterations), store_trace, show_trace, extended_trace, autodiff,
+        Int(show_every), callback, time_limit, μfactor)
 end
 
 function print_header(options::Options)
