@@ -20,6 +20,7 @@ immutable Options{TCallback <: Union{Void, Function}}
     callback::TCallback
     time_limit::Float64
     μfactor::Float64
+    μ0
 end
 
 function Options(;
@@ -35,7 +36,8 @@ function Options(;
         show_every::Integer = 1,
         callback = nothing,
         time_limit = NaN,
-        μfactor = 0.1)
+        μfactor = 0.1,
+        μ0 = :auto)
     show_every = show_every > 0 ? show_every: 1
     if extended_trace && callback == nothing
         show_trace = true
@@ -43,7 +45,7 @@ function Options(;
     Options{typeof(callback)}(
         Float64(x_tol), Float64(f_tol), Float64(g_tol), Int(successive_f_tol),
         Int(iterations), store_trace, show_trace, extended_trace, autodiff,
-        Int(show_every), callback, time_limit, μfactor)
+        Int(show_every), callback, time_limit, μfactor, μ0)
 end
 
 function print_header(options::Options)
