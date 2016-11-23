@@ -15,6 +15,7 @@ immutable Options{TCallback <: Union{Void, Function}}
     store_trace::Bool
     show_trace::Bool
     extended_trace::Bool
+    show_linesearch::Bool
     autodiff::Bool
     show_every::Int
     callback::TCallback
@@ -32,6 +33,7 @@ function Options(;
         store_trace::Bool = false,
         show_trace::Bool = false,
         extended_trace::Bool = false,
+        show_linesearch::Bool = false,
         autodiff::Bool = false,
         show_every::Integer = 1,
         callback = nothing,
@@ -44,8 +46,8 @@ function Options(;
     end
     Options{typeof(callback)}(
         Float64(x_tol), Float64(f_tol), Float64(g_tol), Int(successive_f_tol),
-        Int(iterations), store_trace, show_trace, extended_trace, autodiff,
-        Int(show_every), callback, time_limit, μfactor, μ0)
+        Int(iterations), store_trace, show_trace, extended_trace, show_linesearch,
+        autodiff, Int(show_every), callback, time_limit, μfactor, μ0)
 end
 
 function print_header(options::Options)
