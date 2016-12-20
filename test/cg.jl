@@ -8,14 +8,14 @@ let
 		end
 	end
 
-	let
-	objective(X, B) = sum((X.-B).^2)/2
+    let
+    objective(X, B) = sum((X.-B).^2)/2
 
-	function objective_gradient!(X, G, B)
-	    for i = 1:length(G)
-	        G[i] = X[i]-B[i]
-	    end
-	end
+    function objective_gradient!(X, G, B)
+        for i = 1:length(G)
+            G[i] = X[i]-B[i]
+        end
+    end
 
 	srand(1)
 	B = rand(2,2)
