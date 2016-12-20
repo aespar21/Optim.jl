@@ -51,3 +51,9 @@ function get_precondprep(precondprep!, precondprep)
     end
     precondprep
 end
+
+if VERSION >= v"0.5.0"
+    view5(A, i, j) = view(A, i, j)
+else
+    view5(A, i, j) = A[i,j]
+end

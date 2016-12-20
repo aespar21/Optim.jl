@@ -179,7 +179,7 @@ function optimize{T, M<:Optimizer}(d, initial_x::Array{T}, method::M, options::O
     tracing = options.store_trace || options.show_trace || options.extended_trace || options.callback != nothing
     stopped, stopped_by_callback, stopped_by_time_limit = false, false, false
 
-    x_converged, f_converged = false, false
+    x_converged, f_converged, counter_f_tol = false, false, 0
     g_converged = if typeof(method) <: NelderMead
         nmobjective(state.f_simplex, state.m, state.n) < options.g_tol
     elseif  typeof(method) <: ParticleSwarm || typeof(method) <: SimulatedAnnealing
@@ -201,6 +201,11 @@ function optimize{T, M<:Optimizer}(d, initial_x::Array{T}, method::M, options::O
         update_g!(d, state, method)
         x_converged, f_converged,
         g_converged, converged = assess_convergence(state, options)
+        # See optimize in interior.jl for an explanation of the next
+        # two lines (given the existence of the option, we'd better
+        # use it here too)
+        counter_f_tol = f_converged ? counter_f_tol+1 : 0
+        converged = x_converged | g_converged | (counter_f_tol > options.successive_f_tol)
         # We don't use the Hessian for anything if we have declared convergence,
         # so we might as well not make the (expensive) update if converged == true
         !converged && update_h!(d, state, method)
