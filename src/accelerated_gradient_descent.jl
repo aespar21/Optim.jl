@@ -24,7 +24,6 @@ end
 type AcceleratedGradientDescentState{T}
     @add_generic_fields()
     x_previous::Array{T}
-    g::Array{T}
     f_x_previous::T
     iteration::Int64
     y::Array{T}
@@ -34,7 +33,6 @@ type AcceleratedGradientDescentState{T}
 end
 
 function initial_state{T}(method::AcceleratedGradientDescent, options, d, initial_x::Array{T})
-    g = d.g_x
     f_x = value_grad!(d, initial_x)
 
     AcceleratedGradientDescentState("Accelerated Gradient Descent",
@@ -45,7 +43,6 @@ function initial_state{T}(method::AcceleratedGradientDescent, options, d, initia
                          1, # Track g calls in state.g_calls
                          0, # Track h calls in state.h_calls
                          copy(initial_x), # Maintain current state in state.x_previous
-                         g, # Store current gradient in state.g
                          T(NaN), # Store previous f in state.f_x_previous
                          0, # Iteration
                          copy(initial_x), # Maintain intermediary current state in state.y
@@ -59,30 +56,16 @@ function update_state!{T}(d, state::AcceleratedGradientDescentState{T}, method::
     state.iteration += 1
     # Search direction is always the negative gradient
     @simd for i in 1:state.n
-        @inbounds state.s[i] = -state.g[i]
+        @inbounds state.s[i] = -grad(d, i)
     end
 
     # Refresh the line search cache
-    dphi0 = vecdot(state.g, state.s)
+    dphi0 = vecdot(grad(d), state.s)
     LineSearches.clear!(state.lsr)
-    push!(state.lsr, zero(T), state.f_x, dphi0)
+    push!(state.lsr, zero(T), d.f_x, dphi0)
 
     # Determine the distance of movement along the search line
-    try
-        state.alpha, f_update, g_update =
-        method.linesearch!(d, state.x, state.s, state.x_ls, state.g_ls, state.lsr,
-                           state.alpha, state.mayterminate)
-        state.f_calls, state.g_calls = state.f_calls + f_update, state.g_calls + g_update
-    catch ex
-        if isa(ex, LineSearches.LineSearchException)
-            lssuccess = false
-            state.f_calls, state.g_calls = state.f_calls + ex.f_update, state.g_calls + ex.g_update
-            state.alpha = ex.alpha
-            Base.warn("Linesearch failed, using alpha = $(state.alpha) and exiting optimization.")
-        else
-            rethrow(ex)
-        end
-    end
+    lssucces = do_linesearch(state, method, d)
 
     # Make one move in the direction of the gradient
     copy!(state.y_previous, state.y)
@@ -100,7 +83,7 @@ function update_state!{T}(d, state::AcceleratedGradientDescentState{T}, method::
     end
 
     # Update the function value and gradient
-    state.f_x_previous, state.f_x = state.f_x, d.fg!(state.x, state.g)
+    state.f_x_previous, df_x = d.f_x, value_grad!(d, state.x)
     state.f_calls, state.g_calls = state.f_calls + 1, state.g_calls + 1
 
     (lssuccess == false) # break on linesearch error

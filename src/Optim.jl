@@ -54,6 +54,8 @@ module Optim
     # Tracing
     include("utilities/update.jl")
 
+    # Line search generic code
+    include("utilities/do_linesearch.jl")
 
     # Grid Search
     include("grid_search.jl")

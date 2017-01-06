@@ -43,7 +43,7 @@ function assess_convergence(d, state, options::Options)
         f_converged = true
     end
 
-    if vecnorm(state.g, Inf) < options.g_tol
+    if vecnorm(grad(d), Inf) < options.g_tol
         g_converged = true
     end
 

@@ -19,7 +19,6 @@ end
 type BFGSState{T}
     @add_generic_fields()
     x_previous::Array{T}
-    g::Array{T}
     g_previous::Array{T}
     f_x_previous::T
     dx::Array{T}
@@ -33,7 +32,6 @@ end
 
 function initial_state{T}(method::BFGS, options, d, initial_x::Array{T})
     n = length(initial_x)
-    g = d.g_x
     f_x = value_grad!(d, initial_x)
 
     invH = method.initial_invH(initial_x)
@@ -47,8 +45,7 @@ function initial_state{T}(method::BFGS, options, d, initial_x::Array{T})
               1, # Track g calls in state.g_calls
               0, # Track h calls in state.h_calls
               copy(initial_x), # Maintain current state in state.x_previous
-              g, # Store current gradient in state.g
-              copy(g), # Store previous gradient in state.g_previous
+              copy(grad(d)), # Store previous gradient in state.g_previous
               T(NaN), # Store previous f in state.f_x_previous
               Array{T}(n), # Store changes in position in state.dx
               Array{T}(n), # Store changes in gradient in state.dg
@@ -64,38 +61,24 @@ function update_state!{T}(d, state::BFGSState{T}, method::BFGS)
     lssuccess = true
     # Set the search direction
     # Search direction is the negative gradient divided by the approximate Hessian
-    A_mul_B!(state.s, state.invH, state.g)
+    A_mul_B!(state.s, state.invH, grad(d))
     scale!(state.s, -1)
 
     # Refresh the line search cache
-    dphi0 = vecdot(state.g, state.s)
+    dphi0 = vecdot(grad(d), state.s)
     # If invH is not positive definite, reset it to I
     if dphi0 > 0.0
         copy!(state.invH, state.I)
         @simd for i in 1:state.n
-            @inbounds state.s[i] = -state.g[i]
+            @inbounds state.s[i] = -grad(g, i)
         end
-        dphi0 = vecdot(state.g, state.s)
+        dphi0 = vecdot(grad(d), state.s)
     end
     LineSearches.clear!(state.lsr)
     push!(state.lsr, zero(T), d.f_x, dphi0)
 
     # Determine the distance of movement along the search line
-    try
-        state.alpha, f_update, g_update =
-            method.linesearch!(d, state.x, state.s, state.x_ls, state.g_ls, state.lsr,
-                               state.alpha, state.mayterminate)
-        state.f_calls, state.g_calls = state.f_calls + f_update, state.g_calls + g_update
-    catch ex
-        if isa(ex, LineSearches.LineSearchException)
-            lssuccess = false
-            state.f_calls, state.g_calls = state.f_calls + ex.f_update, state.g_calls + ex.g_update
-            state.alpha = ex.alpha
-            Base.warn("Linesearch failed, using alpha = $(state.alpha) and exiting optimization.")
-        else
-            rethrow(ex)
-        end
-    end
+    lssucces = do_linesearch(state, method, d)
 
     # Maintain a record of previous position
     copy!(state.x_previous, state.x)
@@ -107,14 +90,14 @@ function update_state!{T}(d, state::BFGSState{T}, method::BFGS)
     end
 
     # Maintain a record of the previous gradient
-    copy!(state.g_previous, state.g)
+    copy!(state.g_previous, grad(d))
     (lssuccess == false) # break on linesearch error
 end
 
-function update_h!(d, state, mehtod::BFGS)
+function update_h!(d, state, method::BFGS)
     # Measure the change in the gradient
     @simd for i in 1:state.n
-        @inbounds state.dg[i] = state.g[i] - state.g_previous[i]
+        @inbounds state.dg[i] = grad(d, i) - state.g_previous[i]
     end
 
     # Update the inverse Hessian approximation using Sherman-Morrison

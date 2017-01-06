@@ -87,7 +87,6 @@ end
 type ConjugateGradientState{T}
     @add_generic_fields()
     x_previous::Array{T}
-    g::Array{T}
     g_previous::Array{T}
     f_x_previous::T
     y::Array{T}
@@ -99,18 +98,17 @@ end
 
 
 function initial_state{T}(method::ConjugateGradient, options, d, initial_x::Array{T})
-    g = d.g_x
     d.f_x = value_grad!(d, initial_x)
 
-    pg = copy(g)
+    pg = copy(grad(d))
     @assert typeof(d.f_x) == T
     # Output messages
     if !isfinite(d.f_x)
         error("Must have finite starting value")
     end
-    if !all(isfinite, g)
-        @show g
-        @show find(!isfinite.(g))
+    if !all(isfinite, grad(d))
+        @show grad(d)
+        @show find(!isfinite.(grad(d)))
         error("Gradient must have all finite values at starting point")
     end
 
@@ -118,7 +116,7 @@ function initial_state{T}(method::ConjugateGradient, options, d, initial_x::Arra
     #    if we don't precondition, then this is an extra superfluous copy
     #    TODO: consider allowing a reference for pg instead of a copy
     method.precondprep!(method.P, initial_x)
-    A_ldiv_B!(pg, method.P, g)
+    A_ldiv_B!(pg, method.P, grad(d))
 
     ConjugateGradientState("Conjugate Gradient",
                          length(initial_x),
@@ -128,8 +126,7 @@ function initial_state{T}(method::ConjugateGradient, options, d, initial_x::Arra
                          1, # Track g calls in state.g_calls
                          0, # Track h calls in state.h_calls
                          copy(initial_x), # Maintain current state in state.x_previous
-                         g, # Store current gradient in state.g
-                         copy(g), # Store previous gradient in state.g_previous
+                         copy(grad(d)), # Store previous gradient in state.g_previous
                          T(NaN), # Store previous f in d.f_x_previous
                          similar(initial_x), # Intermediate value in CG calculation
                          similar(initial_x), # Preconditioned intermediate value in CG calculation
@@ -146,7 +143,7 @@ function update_state!{T}(d, state::ConjugateGradientState{T}, method::Conjugate
             @simd for i in 1:state.n
                 @inbounds state.s[i] = -state.pg[i]
             end
-            dphi0 = vecdot(state.g, state.s)
+            dphi0 = vecdot(grad(d), state.s)
             if dphi0 >= 0
                 return true
             end
@@ -162,25 +159,10 @@ function update_state!{T}(d, state::ConjugateGradientState{T}, method::Conjugate
         state.alpha, state.mayterminate, f_update, g_update =
           LineSearches.alphatry(state.alpha, d, state.x, state.s, state.x_ls, state.g_ls, state.lsr)
         state.f_calls, state.g_calls = state.f_calls + f_update, state.g_calls + g_update
+        d.f_calls, d.g_calls = d.f_calls + f_update, d.g_calls + g_update
 
         # Determine the distance of movement along the search line
-        try
-            state.alpha, f_update, g_update =
-                method.linesearch!(d, state.x, state.s, state.x_ls, state.g_ls, state.lsr,
-                                   state.alpha, state.mayterminate)
-            state.f_calls, state.g_calls = state.f_calls + f_update, state.g_calls + g_update
-            d.f_calls, d.g_calls = d.f_calls + f_update, d.g_calls + g_update
-        catch ex
-            if isa(ex, LineSearches.LineSearchException)
-                lssuccess = false
-                state.f_calls, state.g_calls = state.f_calls + ex.f_update, state.g_calls + ex.g_update
-                d.f_calls, d.g_calls = d.f_calls + ex.f_update, d.g_calls + ex.g_update
-                state.alpha = ex.alpha
-                Base.warn("Linesearch failed, using alpha = $(state.alpha) and exiting optimization.")
-            else
-                rethrow(ex)
-            end
-        end
+        lssucces = do_linesearch(state, method, d)
 
         # Maintain a record of previous position
         copy!(state.x_previous, state.x)
@@ -189,7 +171,7 @@ function update_state!{T}(d, state::ConjugateGradientState{T}, method::Conjugate
         LinAlg.axpy!(state.alpha, state.s, state.x)
 
         # Maintain a record of the previous gradient
-        copy!(state.g_previous, d.g_x)
+        copy!(state.g_previous, grad(d))
 
         # Update the function value and gradient
         state.f_x_previous, d.f_x = d.f_x, value_grad!(d, state.x)
@@ -221,7 +203,7 @@ function update_state!{T}(d, state::ConjugateGradientState{T}, method::Conjugate
         @simd for i in 1:state.n     # py = pg - py
            @inbounds state.py[i] = state.pg[i] - state.py[i]
         end
-        betak = (vecdot(state.y, state.pg) - vecdot(state.y, state.py) * vecdot(d.g_x, state.s) / ydots) / ydots
+        betak = (vecdot(state.y, state.pg) - vecdot(state.y, state.py) * vecdot(grad(d), state.s) / ydots) / ydots
         beta = max(betak, etak)
         @simd for i in 1:state.n
             @inbounds state.s[i] = beta * state.s[i] - state.pg[i]

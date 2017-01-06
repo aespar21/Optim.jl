@@ -92,7 +92,6 @@ end
 type LBFGSState{T}
     @add_generic_fields()
     x_previous::Array{T}
-    g::Array{T}
     g_previous::Array{T}
     rho::Array{T}
     dx_history::Array{T}
@@ -110,21 +109,17 @@ end
 
 function initial_state{T}(method::LBFGS, options, d, initial_x::Array{T})
     n = length(initial_x)
-    g = d.g_x
-    d.f_x = value_grad!(d, initial_x)
-
     # Maintain a cache for line search results
     # Trace the history of states visited
     LBFGSState("L-BFGS",
               n,
               copy(initial_x), # Maintain current state in state.x
-              d.f_x, # Store current f in state.f_x
+              value_grad!(d, initial_x), # Store current f in state.f_x
               1, # Track f calls in state.f_calls
               1, # Track g calls in state.g_calls
               0, # Track h calls in state.h_calls
               copy(initial_x), # Maintain current state in state.x_previous
-              g, # Store current gradient in state.g
-              copy(g), # Store previous gradient in state.g_previous
+              copy(grad(d)), # Store previous gradient in state.g_previous
               Array{T}(method.m), # state.rho
               Array{T}(n, method.m), # Store changes in position in state.dx_history
               Array{T}(n, method.m), # Store changes in gradient in state.dg_history
@@ -182,24 +177,7 @@ function update_state!{T}(d, state::LBFGSState{T}, method::LBFGS)
         alphaguess = state.alpha
     end
 
-    # Determine the distance of movement along the search line
-    try
-        state.alpha, f_update, g_update =
-        method.linesearch!(d, state.x, state.s, state.x_ls, state.g_ls, state.lsr,
-                           alphaguess, state.mayterminate)
-        state.f_calls, state.g_calls = state.f_calls + f_update, state.g_calls + g_update
-        d.f_calls, d.g_calls = d.f_calls + f_update, d.g_calls + g_update
-    catch ex
-        if isa(ex, LineSearches.LineSearchException)
-            lssuccess = false
-            state.f_calls, state.g_calls = state.f_calls + ex.f_update, state.g_calls + ex.g_update
-            d.f_calls, d.g_calls = d.f_calls + ex.f_update, d.g_calls + ex.g_update
-            state.alpha = ex.alpha
-            Base.warn("Linesearch failed, using alpha = $(state.alpha) and exiting optimization.")
-        else
-            rethrow(ex)
-        end
-    end
+    lssucces = do_linesearch(state, method, d, alphaguess)
 
     # Maintain a record of previous position
     copy!(state.x_previous, state.x)
@@ -220,7 +198,7 @@ end
 function update_h!(d, state, method::LBFGS)
     # Measure the change in the gradient
     @simd for i in 1:state.n
-        @inbounds state.dg[i] = grad(d)[i] - state.g_previous[i]
+        @inbounds state.dg[i] = grad(d, i) - state.g_previous[i]
     end
 
     # Update the L-BFGS history of positions and gradients

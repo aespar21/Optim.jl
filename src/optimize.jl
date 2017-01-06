@@ -163,11 +163,25 @@ function update_h!(d, state, method::SecondOrderSolver)
     state.h_calls += 1
 end
 
+function clear_object!(d::NonDifferentiableFunction)
+    d.f_calls = 0
+end
+function clear_object!(d::DifferentiableFunction)
+    d.f_calls = 0
+    d.g_calls = 0
+end
+function clear_object!(d::TwiceDifferentiableFunction)
+    d.f_calls = 0
+    d.g_calls = 0
+    d.h_calls = 0
+end
+
 after_while!(d, state, method, options) = nothing
 optimize{T, M<:Union{SimulatedAnnealing, NelderMead, ParticleSwarm}}(d::Function, initial_x::Array{T}, method::M, options::Options)=
 optimize(NonDifferentiableFunction(d, initial_x), initial_x, method, options)
 function optimize{T, M<:Optimizer}(d, initial_x::Array{T}, method::M, options::Options)
     t0 = time() # Initial time stamp used to control early stopping by options.time_limit
+    clear_object!(d)
 
     if length(initial_x) == 1 && typeof(method) <: NelderMead
         error("Use optimize(f, scalar, scalar) for 1D problems")
@@ -186,14 +200,14 @@ function optimize{T, M<:Optimizer}(d, initial_x::Array{T}, method::M, options::O
     elseif  typeof(method) <: ParticleSwarm || typeof(method) <: SimulatedAnnealing
         g_converged = false
     else
-        vecnorm(state.g, Inf) < options.g_tol
+        vecnorm(grad(d), Inf) < options.g_tol
     end
 
     converged = g_converged
     iteration = 0
 
     options.show_trace && print_header(method)
-    trace!(tr, state, iteration, method, options)
+    trace!(tr, d, state, iteration, method, options)
 
     while !converged && !stopped && iteration < options.iterations
         iteration += 1
@@ -210,7 +224,7 @@ function optimize{T, M<:Optimizer}(d, initial_x::Array{T}, method::M, options::O
         # should have boolean return value that controls the variable stopped_by_callback.
         # This allows for early stopping controlled by the callback.
         if tracing
-            stopped_by_callback = trace!(tr, state, iteration, method, options)
+            stopped_by_callback = trace!(tr, d, state, iteration, method, options)
         end
 
         # Check time_limit; if none is provided it is NaN and the comparison

@@ -65,21 +65,7 @@ function initial_state{T}(method::Newton, options, d, initial_x::Array{T})
         push!(state.lsr, zero(T), d.f_x, dphi0)
 
         # Determine the distance of movement along the search line
-        try
-            state.alpha, f_update, g_update =
-                method.linesearch!(d, state.x, state.s, state.x_ls, state.g_ls, state.lsr,
-                                   state.alpha, state.mayterminate)
-            state.f_calls, state.g_calls = state.f_calls + f_update, state.g_calls + g_update
-        catch ex
-            if isa(ex, LineSearches.LineSearchException)
-                lssuccess = false
-                state.f_calls, state.g_calls = state.f_calls + ex.f_update, state.g_calls + ex.g_update
-                state.alpha = ex.alpha
-                Base.warn("Linesearch failed, using alpha = $(state.alpha) and exiting optimization.")
-            else
-                rethrow(ex)
-            end
-        end
+        lssucces = do_linesearch(state, method, d)
 
         # Maintain a record of previous position
         copy!(state.x_previous, state.x)
