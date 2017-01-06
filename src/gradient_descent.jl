@@ -29,8 +29,9 @@ type GradientDescentState{T}
 end
 
 function initial_state{T}(method::GradientDescent, options, d, initial_x::Array{T})
-    g = similar(initial_x)
-    f_x = d.fg!(initial_x, g)
+    g = d.g_x
+    f_x = value_grad!(d, initial_x)
+
 
     GradientDescentState("Gradient Descent",
                          length(initial_x),
@@ -50,14 +51,14 @@ function update_state!{T}(d, state::GradientDescentState{T}, method::GradientDes
     lssuccess = true
     # Search direction is always the negative preconditioned gradient
     method.precondprep!(method.P, state.x)
-    A_ldiv_B!(state.s, method.P, state.g)
+    A_ldiv_B!(state.s, method.P, grad(d))
     @simd for i in 1:state.n
         @inbounds state.s[i] = -state.s[i]
     end
     # Refresh the line search cache
     dphi0 = vecdot(state.g, state.s)
     LineSearches.clear!(state.lsr)
-    push!(state.lsr, zero(T), state.f_x, dphi0)
+    push!(state.lsr, zero(T), d.f_x, dphi0)
 
     # Determine the distance of movement along the search line
     try

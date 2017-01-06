@@ -33,8 +33,9 @@ end
 
 function initial_state{T}(method::BFGS, options, d, initial_x::Array{T})
     n = length(initial_x)
-    g = Array(T, n)
-    f_x = d.fg!(initial_x, g)
+    g = d.g_x
+    f_x = value_grad!(d, initial_x)
+
     invH = method.initial_invH(initial_x)
     # Maintain a cache for line search results
     # Trace the history of states visited
@@ -77,7 +78,7 @@ function update_state!{T}(d, state::BFGSState{T}, method::BFGS)
         dphi0 = vecdot(state.g, state.s)
     end
     LineSearches.clear!(state.lsr)
-    push!(state.lsr, zero(T), state.f_x, dphi0)
+    push!(state.lsr, zero(T), d.f_x, dphi0)
 
     # Determine the distance of movement along the search line
     try

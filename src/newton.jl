@@ -27,21 +27,20 @@ function initial_state{T}(method::Newton, options, d, initial_x::Array{T})
       g = Array(T, n)
       s = Array(T, n)
       x_ls, g_ls = Array(T, n), Array(T, n)
-      f_x_previous, f_x = NaN, d.fg!(initial_x, g)
+      f_x_previous, d.f_x = NaN, value_grad!(d, initial_x)
       f_calls, g_calls = 1, 1
       H = Array(T, n, n)
       d.h!(initial_x, H)
       h_calls = 1
-
       NewtonState("Newton's Method",
                   length(initial_x),
                   copy(initial_x), # Maintain current state in state.x
-                  f_x, # Store current f in state.f_x
+                  d.f_x, # Store current f in state.f_x
                   f_calls, # Track f calls in state.f_calls
                   g_calls, # Track g calls in state.g_calls
                   h_calls,
                   copy(initial_x), # Maintain current state in state.x_previous
-                  g, # Store current gradient in state.g
+                  d.g_x, # Store current gradient in state.g
                   T(NaN), # Store previous f in state.f_x_previous
                   H,
                   copy(H),
@@ -58,12 +57,12 @@ function initial_state{T}(method::Newton, options, d, initial_x::Array{T})
         # identity matrix" version of the modified Newton method. More
         # information can be found in the discussion at issue #153.
         state.F, state.Hd = ldltfact!(Positive, state.H)
-        state.s[:] = -(state.F\state.g)
+        state.s[:] = -(state.F\d.g_x)
 
         # Refresh the line search cache
-        dphi0 = vecdot(state.g, state.s)
+        dphi0 = vecdot(d.g_x, state.s)
         LineSearches.clear!(state.lsr)
-        push!(state.lsr, zero(T), state.f_x, dphi0)
+        push!(state.lsr, zero(T), d.f_x, dphi0)
 
         # Determine the distance of movement along the search line
         try

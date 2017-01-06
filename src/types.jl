@@ -90,23 +90,6 @@ type UnivariateOptimizationResults{T,M} <: OptimizationResults
     f_calls::Int
 end
 
-immutable NonDifferentiableFunction
-    f::Function
-end
-
-immutable DifferentiableFunction
-    f::Function
-    g!::Function
-    fg!::Function
-end
-
-immutable TwiceDifferentiableFunction
-    f::Function
-    g!::Function
-    fg!::Function
-    h!::Function
-end
-
 function Base.show(io::IO, t::OptimizationState)
     @printf io "%6d   %14e   %14e\n" t.iteration t.value t.g_norm
     if !isempty(t.metadata)
@@ -180,51 +163,4 @@ function Base.append!(a::MultivariateOptimizationResults, b::MultivariateOptimiz
     append!(a.trace, b.trace)
     a.f_calls += f_calls(b)
     a.g_calls += g_calls(b)
-end
-
-# TODO: Expose ability to do forward and backward differencing
-function DifferentiableFunction(f::Function)
-    function g!(x::Array, storage::Array)
-        Calculus.finite_difference!(f, x, storage, :central)
-        return
-    end
-    function fg!(x::Array, storage::Array)
-        g!(x, storage)
-        return f(x)
-    end
-    return DifferentiableFunction(f, g!, fg!)
-end
-
-function DifferentiableFunction(f::Function, g!::Function)
-    function fg!(x::Array, storage::Array)
-        g!(x, storage)
-        return f(x)
-    end
-    return DifferentiableFunction(f, g!, fg!)
-end
-
-function TwiceDifferentiableFunction(f::Function)
-    function g!(x::Vector, storage::Vector)
-        Calculus.finite_difference!(f, x, storage, :central)
-        return
-    end
-    function fg!(x::Vector, storage::Vector)
-        g!(x, storage)
-        return f(x)
-    end
-    function h!(x::Vector, storage::Matrix)
-        Calculus.finite_difference_hessian!(f, x, storage)
-        return
-    end
-    return TwiceDifferentiableFunction(f, g!, fg!, h!)
-end
-
-function TwiceDifferentiableFunction(f::Function,
-                                     g!::Function,
-                                     h!::Function)
-    function fg!(x::Vector, storage::Vector)
-        g!(x, storage)
-        return f(x)
-    end
-    return TwiceDifferentiableFunction(f, g!, fg!, h!)
 end

@@ -60,14 +60,14 @@ function optimize{F<:Function, G<:Function}(f::F,
                   initial_x::Array,
                   method::Optimizer,
                   options::Options = Options())
-    d = DifferentiableFunction(f, g!)
+    d = DifferentiableFunction(f, g!, initial_x)
     optimize(d, initial_x, method, options)
 end
 function optimize{F<:Function, G<:Function}(f::F,
                   g!::G,
                   initial_x::Array,
                   options::Options)
-    d = DifferentiableFunction(f, g!)
+    d = DifferentiableFunction(f, g!, initial_x)
     optimize(d, initial_x, BFGS(), options)
 end
 
@@ -77,7 +77,7 @@ function optimize{F<:Function, G<:Function, H<:Function}(f::F,
                   initial_x::Array,
                   method::Optimizer,
                   options::Options = Options())
-    d = TwiceDifferentiableFunction(f, g!, h!)
+    d = TwiceDifferentiableFunction(f, g!, h!, initial_x)
     optimize(d, initial_x, method, options)
 end
 function optimize{F<:Function, G<:Function, H<:Function}(f::F,
@@ -85,7 +85,7 @@ function optimize{F<:Function, G<:Function, H<:Function}(f::F,
                   h!::H,
                   initial_x::Array,
                   options)
-    d = TwiceDifferentiableFunction(f, g!, h!)
+    d = TwiceDifferentiableFunction(f, g!, h!, initial_x)
     optimize(d, initial_x, Newton(), options)
 end
 
@@ -95,7 +95,7 @@ function optimize{F<:Function, T, M <: Union{FirstOrderSolver, SecondOrderSolver
                   options::Options)
     if !options.autodiff
         if M <: FirstOrderSolver
-            d = DifferentiableFunction(f)
+            d = DifferentiableFunction(f, initial_x)
         else
             error("No gradient or Hessian was provided. Either provide a gradient and Hessian, set autodiff = true in the Options if applicable, or choose a solver that doesn't require a Hessian.")
         end
@@ -110,11 +110,11 @@ function optimize{F<:Function, T, M <: Union{FirstOrderSolver, SecondOrderSolver
         end
 
         if M <: FirstOrderSolver
-            d = DifferentiableFunction(f, g!, fg!)
+            d = DifferentiableFunction(f, g!, fg!, initial_x)
         else
             hcfg = ForwardDiff.HessianConfig(initial_x)
             h! = (x, out) -> ForwardDiff.hessian!(out, f, x, hcfg)
-            d = TwiceDifferentiableFunction(f, g!, fg!, h!)
+            d = TwiceDifferentiableFunction(f, g!, fg!, h!, initial_x)
         end
     end
 
@@ -126,12 +126,12 @@ function optimize(d::DifferentiableFunction,
                   method::Newton,
                   options::Options)
     if !options.autodiff
-        error("No Hessian was provided. Either provide a Hessian, set autodiff = true in the Options if applicable, or choose a solver that doesn't require a Hessian.")
+        throw(ArgumentError("No Hessian was provided. Either provide a Hessian, set autodiff = true in the Options if applicable, or choose a solver that doesn't require a Hessian."))
     else
         hcfg = ForwardDiff.HessianConfig(initial_x)
         h! = (x, out) -> ForwardDiff.hessian!(out, d.f, x, hcfg)
     end
-    optimize(TwiceDifferentiableFunction(d.f, d.g!, d.fg!, h!), initial_x, method, options)
+    optimize(TwiceDifferentiableFunction(d.f, d.g!, d.fg!, h!, initial_x), initial_x, method, options)
 end
 
 function optimize(d::DifferentiableFunction,
@@ -139,19 +139,19 @@ function optimize(d::DifferentiableFunction,
                   method::NewtonTrustRegion,
                   options::Options)
     if !options.autodiff
-        error("No Hessian was provided. Either provide a Hessian, set autodiff = true in the Options if applicable, or choose a solver that doesn't require a Hessian.")
+        throw(ArgumentError("No Hessian was provided. Either provide a Hessian, set autodiff = true in the Options if applicable, or choose a solver that doesn't require a Hessian."))
     else
         hcfg = ForwardDiff.HessianConfig(initial_x)
         h! = (x, out) -> ForwardDiff.hessian!(out, d.f, x, hcfg)
     end
-    optimize(TwiceDifferentiableFunction(d.f, d.g!, d.fg!, h!), initial_x, method, options)
+    optimize(TwiceDifferentiableFunction(d.f, d.g!, d.fg!, h!, initial_x), initial_x, method, options)
 end
 
 update_g!(d, state, method) = nothing
 
 function update_g!{M<:Union{FirstOrderSolver, Newton}}(d, state, method::M)
     # Update the function value and gradient
-    state.f_x_previous, state.f_x = state.f_x, d.fg!(state.x, state.g)
+    state.f_x_previous, d.f_x = d.f_x, value_grad!(d,state.x)
     state.f_calls, state.g_calls = state.f_calls + 1, state.g_calls + 1
 end
 
@@ -164,7 +164,8 @@ function update_h!(d, state, method::SecondOrderSolver)
 end
 
 after_while!(d, state, method, options) = nothing
-
+optimize{T, M<:Union{SimulatedAnnealing, NelderMead, ParticleSwarm}}(d::Function, initial_x::Array{T}, method::M, options::Options)=
+optimize(NonDifferentiableFunction(d, initial_x), initial_x, method, options)
 function optimize{T, M<:Optimizer}(d, initial_x::Array{T}, method::M, options::Options)
     t0 = time() # Initial time stamp used to control early stopping by options.time_limit
 
@@ -200,7 +201,7 @@ function optimize{T, M<:Optimizer}(d, initial_x::Array{T}, method::M, options::O
         update_state!(d, state, method) && break # it returns true if it's forced by something in update! to stop (eg dx_dg == 0.0 in BFGS)
         update_g!(d, state, method)
         x_converged, f_converged,
-        g_converged, converged = assess_convergence(state, options)
+        g_converged, converged = assess_convergence(d, state, options)
         # We don't use the Hessian for anything if we have declared convergence,
         # so we might as well not make the (expensive) update if converged == true
         !converged && update_h!(d, state, method)
@@ -222,11 +223,11 @@ function optimize{T, M<:Optimizer}(d, initial_x::Array{T}, method::M, options::O
     end # while
 
     after_while!(d, state, method, options)
-
+        typeof(d)<:DifferentiableFunction&&@show state.f_calls, d.f_calls
     return MultivariateOptimizationResults(state.method_string,
                                             initial_x,
                                             state.x,
-                                            Float64(state.f_x),
+                                            Float64(d.f_x),
                                             iteration,
                                             iteration == options.iterations,
                                             x_converged,

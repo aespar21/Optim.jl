@@ -99,12 +99,13 @@ end
 
 
 function initial_state{T}(method::ConjugateGradient, options, d, initial_x::Array{T})
-    g = similar(initial_x)
-    f_x = d.fg!(initial_x, g)
+    g = d.g_x
+    d.f_x = value_grad!(d, initial_x)
+
     pg = copy(g)
-    @assert typeof(f_x) == T
+    @assert typeof(d.f_x) == T
     # Output messages
-    if !isfinite(f_x)
+    if !isfinite(d.f_x)
         error("Must have finite starting value")
     end
     if !all(isfinite, g)
@@ -122,14 +123,14 @@ function initial_state{T}(method::ConjugateGradient, options, d, initial_x::Arra
     ConjugateGradientState("Conjugate Gradient",
                          length(initial_x),
                          copy(initial_x), # Maintain current state in state.x
-                         f_x, # Store current f in state.f_x
+                         d.f_x, # Store current f in d.f_x
                          1, # Track f calls in state.f_calls
                          1, # Track g calls in state.g_calls
                          0, # Track h calls in state.h_calls
                          copy(initial_x), # Maintain current state in state.x_previous
                          g, # Store current gradient in state.g
                          copy(g), # Store previous gradient in state.g_previous
-                         T(NaN), # Store previous f in state.f_x_previous
+                         T(NaN), # Store previous f in d.f_x_previous
                          similar(initial_x), # Intermediate value in CG calculation
                          similar(initial_x), # Preconditioned intermediate value in CG calculation
                          pg, # Maintain the preconditioned gradient in pg
@@ -137,10 +138,10 @@ function initial_state{T}(method::ConjugateGradient, options, d, initial_x::Arra
                          @initial_linesearch()...) # Maintain a cache for line search results in state.lsr
 end
 
-function update_state!{T}(df, state::ConjugateGradientState{T}, method::ConjugateGradient)
+function update_state!{T}(d, state::ConjugateGradientState{T}, method::ConjugateGradient)
         lssuccess = true
         # Reset the search direction if it becomes corrupted
-        dphi0 = vecdot(state.g, state.s)
+        dphi0 = vecdot(d.g_x, state.s)
         if dphi0 >= 0
             @simd for i in 1:state.n
                 @inbounds state.s[i] = -state.pg[i]
@@ -153,25 +154,27 @@ function update_state!{T}(df, state::ConjugateGradientState{T}, method::Conjugat
 
         # Refresh the line search cache
         LineSearches.clear!(state.lsr)
-        @assert typeof(state.f_x) == T
+        @assert typeof(d.f_x) == T
         @assert typeof(dphi0) == T
-        push!(state.lsr, zero(T), state.f_x, dphi0)
+        push!(state.lsr, zero(T), d.f_x, dphi0)
 
         # Pick the initial step size (HZ #I1-I2)
         state.alpha, state.mayterminate, f_update, g_update =
-          LineSearches.alphatry(state.alpha, df, state.x, state.s, state.x_ls, state.g_ls, state.lsr)
+          LineSearches.alphatry(state.alpha, d, state.x, state.s, state.x_ls, state.g_ls, state.lsr)
         state.f_calls, state.g_calls = state.f_calls + f_update, state.g_calls + g_update
 
         # Determine the distance of movement along the search line
         try
             state.alpha, f_update, g_update =
-                method.linesearch!(df, state.x, state.s, state.x_ls, state.g_ls, state.lsr,
+                method.linesearch!(d, state.x, state.s, state.x_ls, state.g_ls, state.lsr,
                                    state.alpha, state.mayterminate)
             state.f_calls, state.g_calls = state.f_calls + f_update, state.g_calls + g_update
+            d.f_calls, d.g_calls = d.f_calls + f_update, d.g_calls + g_update
         catch ex
             if isa(ex, LineSearches.LineSearchException)
                 lssuccess = false
                 state.f_calls, state.g_calls = state.f_calls + ex.f_update, state.g_calls + ex.g_update
+                d.f_calls, d.g_calls = d.f_calls + ex.f_update, d.g_calls + ex.g_update
                 state.alpha = ex.alpha
                 Base.warn("Linesearch failed, using alpha = $(state.alpha) and exiting optimization.")
             else
@@ -186,15 +189,15 @@ function update_state!{T}(df, state::ConjugateGradientState{T}, method::Conjugat
         LinAlg.axpy!(state.alpha, state.s, state.x)
 
         # Maintain a record of the previous gradient
-        copy!(state.g_previous, state.g)
+        copy!(state.g_previous, d.g_x)
 
         # Update the function value and gradient
-        state.f_x_previous, state.f_x = state.f_x, df.fg!(state.x, state.g)
+        state.f_x_previous, d.f_x = d.f_x, value_grad!(d, state.x)
         state.f_calls, state.g_calls = state.f_calls + 1, state.g_calls + 1
 
         # Check sanity of function and gradient
-        if !isfinite(state.f_x)
-            error("Function must finite function values")
+        if !isfinite(d.f_x)
+            error("Function value must be finite.")
         end
 
         # Determine the next search direction using HZ's CG rule
@@ -210,15 +213,15 @@ function update_state!{T}(df, state::ConjugateGradientState{T}, method::Conjugat
         dPd = dot(state.s, method.P, state.s)
         etak::T = method.eta * vecdot(state.s, state.g_previous) / dPd
         @simd for i in 1:state.n
-            @inbounds state.y[i] = state.g[i] - state.g_previous[i]
+            @inbounds state.y[i] = d.g_x[i] - state.g_previous[i]
         end
         ydots = vecdot(state.y, state.s)
         copy!(state.py, state.pg)        # below, store pg - pg_previous in py
-        A_ldiv_B!(state.pg, method.P, state.g)
+        A_ldiv_B!(state.pg, method.P, d.g_x)
         @simd for i in 1:state.n     # py = pg - py
            @inbounds state.py[i] = state.pg[i] - state.py[i]
         end
-        betak = (vecdot(state.y, state.pg) - vecdot(state.y, state.py) * vecdot(state.g, state.s) / ydots) / ydots
+        betak = (vecdot(state.y, state.pg) - vecdot(state.y, state.py) * vecdot(d.g_x, state.s) / ydots) / ydots
         beta = max(betak, etak)
         @simd for i in 1:state.n
             @inbounds state.s[i] = beta * state.s[i] - state.pg[i]

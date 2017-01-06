@@ -110,14 +110,15 @@ end
 
 function initial_state{T}(method::LBFGS, options, d, initial_x::Array{T})
     n = length(initial_x)
-    g = Array(T, n)
-    f_x = d.fg!(initial_x, g)
+    g = d.g_x
+    d.f_x = value_grad!(d, initial_x)
+
     # Maintain a cache for line search results
     # Trace the history of states visited
     LBFGSState("L-BFGS",
               n,
               copy(initial_x), # Maintain current state in state.x
-              f_x, # Store current f in state.f_x
+              d.f_x, # Store current f in state.f_x
               1, # Track f calls in state.f_calls
               1, # Track g calls in state.g_calls
               0, # Track h calls in state.h_calls
@@ -148,29 +149,29 @@ function update_state!{T}(d, state::LBFGSState{T}, method::LBFGS)
     method.precondprep!(method.P, state.x)
 
     # Determine the L-BFGS search direction # FIXME just pass state and method?
-    twoloop!(state.s, state.g, state.rho, state.dx_history, state.dg_history,
+    twoloop!(state.s, grad(d), state.rho, state.dx_history, state.dg_history,
              method.m, state.pseudo_iteration,
              state.twoloop_alpha, state.twoloop_q, method.P)
 
     # Refresh the line search cache
-    dphi0 = vecdot(state.g, state.s)
+    dphi0 = vecdot(grad(d), state.s)
     if dphi0 > 0.0
         state.pseudo_iteration = 1
         @simd for i in 1:n
-            @inbounds state.s[i] = -state.g[i]
+            @inbounds state.s[i] = -d.g_x[i]
         end
-        dphi0 = vecdot(state.g, state.s)
+        dphi0 = vecdot(grad(g), state.s)
     end
 
     LineSearches.clear!(state.lsr)
-    push!(state.lsr, zero(T), state.f_x, dphi0)
+    push!(state.lsr, zero(T), d.f_x, dphi0)
 
     # compute an initial guess for the linesearch based on
     # Nocedal/Wright, 2nd ed, (3.60)
     # TODO: this is a temporary fix, but should eventually be split off into
     #       a separate type and possibly live in LineSearches; see #294
     if method.extrapolate && state.pseudo_iteration > 1
-        alphaguess = 2.0 * (state.f_x - state.f_x_previous) / dphi0
+        alphaguess = 2.0 * (d.f_x - state.f_x_previous) / dphi0
         alphaguess = max(alphaguess, state.alpha/4.0)  # not too much reduction
         # if alphaguess ≈ 1, then make it 1 (Newton-type behaviour)
         if method.snap2one[1] < alphaguess < method.snap2one[2]
@@ -187,10 +188,12 @@ function update_state!{T}(d, state::LBFGSState{T}, method::LBFGS)
         method.linesearch!(d, state.x, state.s, state.x_ls, state.g_ls, state.lsr,
                            alphaguess, state.mayterminate)
         state.f_calls, state.g_calls = state.f_calls + f_update, state.g_calls + g_update
+        d.f_calls, d.g_calls = d.f_calls + f_update, d.g_calls + g_update
     catch ex
         if isa(ex, LineSearches.LineSearchException)
             lssuccess = false
             state.f_calls, state.g_calls = state.f_calls + ex.f_update, state.g_calls + ex.g_update
+            d.f_calls, d.g_calls = d.f_calls + ex.f_update, d.g_calls + ex.g_update
             state.alpha = ex.alpha
             Base.warn("Linesearch failed, using alpha = $(state.alpha) and exiting optimization.")
         else
@@ -208,8 +211,8 @@ function update_state!{T}(d, state::LBFGSState{T}, method::LBFGS)
     end
 
     # Save old f and g values to prepare for update_g! call
-    state.f_x_previous = state.f_x
-    copy!(state.g_previous, state.g)
+    state.f_x_previous = d.f_x
+    copy!(state.g_previous, grad(d))
     (lssuccess == false) # break on linesearch error
 end
 
@@ -217,7 +220,7 @@ end
 function update_h!(d, state, method::LBFGS)
     # Measure the change in the gradient
     @simd for i in 1:state.n
-        @inbounds state.dg[i] = state.g[i] - state.g_previous[i]
+        @inbounds state.dg[i] = grad(d)[i] - state.g_previous[i]
     end
 
     # Update the L-BFGS history of positions and gradients

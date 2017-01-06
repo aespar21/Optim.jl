@@ -146,10 +146,10 @@ let
     function h!(x::Vector, storage::Matrix)
         storage[1, 1] = 12.0 * (x[1] - 5.0)^2
     end
+    initial_x = [0.0]
+    d = TwiceDifferentiableFunction(f, g!, h!, initial_x)
 
-    d = TwiceDifferentiableFunction(f, g!, h!)
-
-    results = Optim.optimize(d, [0.0], NewtonTrustRegion())
+    results = Optim.optimize(d, initial_x, NewtonTrustRegion())
     @assert length(results.trace) == 0
     @assert results.g_converged
     @assert norm(Optim.minimizer(results) - [5.0]) < 0.01
@@ -171,10 +171,10 @@ let
         storage[2, 1] = 0.0
         storage[2, 2] = eta
     end
+    initial_x = Float64[127, 921]
+    d = TwiceDifferentiableFunction(f_2, g!_2, h!_2, initial_x)
 
-    d = TwiceDifferentiableFunction(f_2, g!_2, h!_2)
-
-    results = Optim.optimize(d, Float64[127, 921], NewtonTrustRegion())
+    results = Optim.optimize(d, initial_x, NewtonTrustRegion())
     @assert results.g_converged
     @assert norm(Optim.minimizer(results) - [0.0, 0.0]) < 0.01
 
@@ -182,7 +182,7 @@ let
     # Optim.UnconstrainedProblems.examples
     for (name, prob) in Optim.UnconstrainedProblems.examples
     	if prob.istwicedifferentiable
-    		ddf = DifferentiableFunction(prob.f, prob.g!)
+    		ddf = DifferentiableFunction(prob.f, prob.g!, prob.initial_x)
     		res = Optim.optimize(ddf, prob.initial_x, NewtonTrustRegion(), Optim.Options(autodiff = true))
     		@assert norm(Optim.minimizer(res) - prob.solutions) < 1e-2
     		res = Optim.optimize(ddf.f, prob.initial_x, NewtonTrustRegion(), Optim.Options(autodiff = true))

@@ -22,12 +22,6 @@ let
         storage[2, 2] = 2*c
     end
 
-    d2 = DifferentiableFunction(rosenbrock,
-                                rosenbrock_gradient!)
-    d3 = TwiceDifferentiableFunction(rosenbrock,
-                                     rosenbrock_gradient!,
-                                     rosenbrock_hessian!)
-
     for method in (NelderMead(), SimulatedAnnealing())
         optimize(rosenbrock, [0.0,0,.0], method)
         optimize(rosenbrock, Float32[0.0, 0.0], method)
@@ -39,12 +33,12 @@ let
                    MomentumGradientDescent(),
                    AcceleratedGradientDescent(),
                    LBFGS())
-        optimize(d2, [0.0,0,.0], method)
-        optimize(d2, Float32[0.0, 0.0], method)
+        optimize(rosenbrock, rosenbrock_gradient!, [0.0,0,.0], method)
+        optimize(rosenbrock, rosenbrock_gradient!, Float32[0.0, 0.0], method)
     end
 
     for method in (Newton(),)# NewtonTrustRegion())
-        optimize(d3, [0.0,0.0], method)
-        optimize(d3, Float32[0.0, 0.0], method)
+        optimize(rosenbrock, rosenbrock_gradient!, rosenbrock_hessian!, [0.0,0.0], method)
+        optimize(rosenbrock, rosenbrock_gradient!, rosenbrock_hessian!, Float32[0.0, 0.0], method)
     end
 end

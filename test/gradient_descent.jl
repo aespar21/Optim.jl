@@ -28,7 +28,7 @@ let
 
     initial_x = [0.0]
 
-    d = DifferentiableFunction(f_gd_1, g_gd_1)
+    d = DifferentiableFunction(f_gd_1, g_gd_1, initial_x)
 
     results = Optim.optimize(d, initial_x, GradientDescent())
     @test_throws ErrorException Optim.x_trace(results)
@@ -45,10 +45,10 @@ let
       storage[1] = x[1]
       storage[2] = eta * x[2]
     end
+    initial_x = [1.0, 1.0]
+    d = DifferentiableFunction(f_gd_2, g_gd_2, initial_x)
 
-    d = DifferentiableFunction(f_gd_2, g_gd_2)
-
-    results = Optim.optimize(d, [1.0, 1.0], GradientDescent())
+    results = Optim.optimize(d, initial_x, GradientDescent())
     @test_throws ErrorException Optim.x_trace(results)
     @assert Optim.g_converged(results)
     @assert norm(Optim.minimizer(results) - [0.0, 0.0]) < 0.01

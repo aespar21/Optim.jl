@@ -29,7 +29,7 @@ function assess_convergence(x::Array,
 end
 
 
-function assess_convergence(state, options)
+function assess_convergence(d, state, options::Options)
     x_converged, f_converged, g_converged = false, false, false
 
     if maxdiff(state.x, state.x_previous) < options.x_tol
@@ -39,7 +39,7 @@ function assess_convergence(state, options)
     # Absolute Tolerance
     # if abs(f_x - f_x_previous) < f_tol
     # Relative Tolerance
-    if abs(state.f_x - state.f_x_previous) / (abs(state.f_x) + options.f_tol) < options.f_tol || nextfloat(state.f_x) >= state.f_x_previous
+    if abs(d.f_x - state.f_x_previous) / (abs(d.f_x) + options.f_tol) < options.f_tol || nextfloat(d.f_x) >= state.f_x_previous
         f_converged = true
     end
 
@@ -52,19 +52,19 @@ function assess_convergence(state, options)
     return x_converged, f_converged, g_converged, converged
 end
 
-function assess_convergence(state::NelderMeadState, options)
+function assess_convergence(d, state::NelderMeadState, options::Options)
     g_converged = state.nm_x <= options.g_tol # Hijact g_converged for NM stopping criterior
     return false, false, g_converged, g_converged
 end
 
 
-function assess_convergence(state::Union{ParticleSwarmState, SimulatedAnnealingState}, options)
+function assess_convergence(d, state::Union{ParticleSwarmState, SimulatedAnnealingState}, options::Options)
     false, false, false, false
 end
 
 
 
-function assess_convergence(state::NewtonTrustRegionState, options)
+function assess_convergence(d, state::NewtonTrustRegionState, options::Options)
     x_converged, f_converged, g_converged, converged = false, false, false, false
     if state.rho > state.eta
         # Accept the point and check convergence
@@ -73,9 +73,9 @@ function assess_convergence(state::NewtonTrustRegionState, options)
         g_converged,
         converged = assess_convergence(state.x,
                                        state.x_previous,
-                                       state.f_x,
+                                       d.f_x,
                                        state.f_x_previous,
-                                       state.g,
+                                       d.g_x,
                                        options.x_tol,
                                        options.f_tol,
                                        options.g_tol)

@@ -238,8 +238,9 @@ function initial_state{T}(method::NewtonTrustRegion, options, d, initial_x::Arra
     reached_subproblem_solution = true
     interior = true
     lambda = NaN
-    g = Array(T, n)
-    f_x_previous, f_x = NaN, d.fg!(initial_x, g)
+    f_x_previous, d.f_x = NaN, value_grad!(d, initial_x)
+    stor = similar(initial_x)
+    d.g!(initial_x, stor)
     f_calls, g_calls = 1, 1
     H = Array(T, n, n)
     d.h!(initial_x, H)
@@ -248,13 +249,13 @@ function initial_state{T}(method::NewtonTrustRegion, options, d, initial_x::Arra
     NewtonTrustRegionState("Newton's Method (Trust Region)", # Store string with model name in state.method
                          length(initial_x),
                          copy(initial_x), # Maintain current state in state.x
-                         f_x, # Store current f in state.f_x
+                         d.f_x, # Store current f in state.f_x
                          f_calls, # Track f calls in state.f_calls
                          g_calls, # Track g calls in state.g_calls
                          h_calls,
                          copy(initial_x), # Maintain current state in state.x_previous
-                         g, # Store current gradient in state.g
-                         copy(g), # Store previous gradient in state.g_previous
+                         d.g_x, # Store current gradient in state.g
+                         copy(d.g_x), # Store previous gradient in state.g_previous
                          T(NaN), # Store previous f in state.f_x_previous
                          similar(initial_x), # Maintain current search direction in state.s
                          H,
@@ -271,10 +272,9 @@ end
 
 function update_state!{T}(d, state::NewtonTrustRegionState{T}, method::NewtonTrustRegion)
 
-
     # Find the next step direction.
     m, state.interior, state.lambda, state.hard_case, state.reached_subproblem_solution =
-        solve_tr_subproblem!(state.g, state.H, state.delta, state.s)
+        solve_tr_subproblem!(d.g_x, state.H, state.delta, state.s)
 
     # Maintain a record of previous position
     copy!(state.x_previous, state.x)
@@ -285,13 +285,13 @@ function update_state!{T}(d, state::NewtonTrustRegionState{T}, method::NewtonTru
     end
 
     # Update the function value and gradient
-    copy!(state.g_previous, state.g)
-    state.f_x_previous, state.f_x = state.f_x, d.fg!(state.x, state.g)
+    copy!(state.g_previous, d.g_x)
+    state.f_x_previous, d.f_x = d.f_x, value_grad!(d, state.x)
     state.f_calls, state.g_calls = state.f_calls + 1, state.g_calls + 1
 
     # Update the trust region size based on the discrepancy between
     # the predicted and actual function values.  (Algorithm 4.1 in N&W)
-    f_x_diff = state.f_x_previous - state.f_x
+    f_x_diff = state.f_x_previous - d.f_x
     if abs(m) <= eps(T)
         # This should only happen when the step is very small, in which case
         # we should accept the step and assess_convergence().
@@ -323,9 +323,9 @@ function update_state!{T}(d, state::NewtonTrustRegionState{T}, method::NewtonTru
         x_diff = state.x - state.x_previous
         delta = 0.25 * sqrt(vecdot(x_diff, x_diff))
 
-        state.f_x = state.f_x_previous
+        d.f_x = state.f_x_previous
         copy!(state.x, state.x_previous)
-        copy!(state.g, state.g_previous)
+        copy!(d.g_x, state.g_previous)
     end
 
     false
