@@ -152,7 +152,6 @@ update_g!(d, state, method) = nothing
 function update_g!{M<:Union{FirstOrderSolver, Newton}}(d, state, method::M)
     # Update the function value and gradient
     state.f_x_previous, d.f_x = d.f_x, value_grad!(d,state.x)
-    state.f_calls, state.g_calls = state.f_calls + 1, state.g_calls + 1
 end
 
 update_h!(d, state, method) = nothing
@@ -160,7 +159,6 @@ update_h!(d, state, method) = nothing
 # Update the Hessian
 function update_h!(d, state, method::SecondOrderSolver)
     d.h!(state.x, state.H)
-    state.h_calls += 1
 end
 
 function clear_object!(d::NonDifferentiableFunction)
@@ -237,7 +235,6 @@ function optimize{T, M<:Optimizer}(d, initial_x::Array{T}, method::M, options::O
     end # while
 
     after_while!(d, state, method, options)
-        typeof(d)<:DifferentiableFunction&&@show state.f_calls, d.f_calls
     return MultivariateOptimizationResults(state.method_string,
                                             initial_x,
                                             state.x,
@@ -251,9 +248,9 @@ function optimize{T, M<:Optimizer}(d, initial_x::Array{T}, method::M, options::O
                                             g_converged,
                                             options.g_tol,
                                             tr,
-                                            state.f_calls,
-                                            state.g_calls,
-                                            state.h_calls)
+                                            f_calls(d),
+                                            g_calls(d),
+                                            h_calls(d))
 end
 
 # Univariate Options

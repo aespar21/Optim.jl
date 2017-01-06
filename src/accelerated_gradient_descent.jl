@@ -33,15 +33,10 @@ type AcceleratedGradientDescentState{T}
 end
 
 function initial_state{T}(method::AcceleratedGradientDescent, options, d, initial_x::Array{T})
-    f_x = value_grad!(d, initial_x)
-
+    value_grad!(d, initial_x)
     AcceleratedGradientDescentState("Accelerated Gradient Descent",
                          length(initial_x),
                          copy(initial_x), # Maintain current state in state.x
-                         f_x, # Store current f in state.f_x
-                         1, # Track f calls in state.f_calls
-                         1, # Track g calls in state.g_calls
-                         0, # Track h calls in state.h_calls
                          copy(initial_x), # Maintain current state in state.x_previous
                          T(NaN), # Store previous f in state.f_x_previous
                          0, # Iteration
@@ -52,7 +47,6 @@ function initial_state{T}(method::AcceleratedGradientDescent, options, d, initia
 end
 
 function update_state!{T}(d, state::AcceleratedGradientDescentState{T}, method::AcceleratedGradientDescent)
-    lssuccess = true
     state.iteration += 1
     # Search direction is always the negative gradient
     @simd for i in 1:state.n
@@ -65,7 +59,7 @@ function update_state!{T}(d, state::AcceleratedGradientDescentState{T}, method::
     push!(state.lsr, zero(T), d.f_x, dphi0)
 
     # Determine the distance of movement along the search line
-    lssucces = do_linesearch(state, method, d)
+    lssuccess = do_linesearch(state, method, d)
 
     # Make one move in the direction of the gradient
     copy!(state.y_previous, state.y)
@@ -84,7 +78,6 @@ function update_state!{T}(d, state::AcceleratedGradientDescentState{T}, method::
 
     # Update the function value and gradient
     state.f_x_previous, df_x = d.f_x, value_grad!(d, state.x)
-    state.f_calls, state.g_calls = state.f_calls + 1, state.g_calls + 1
 
     (lssuccess == false) # break on linesearch error
 end

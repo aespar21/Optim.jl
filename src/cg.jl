@@ -121,10 +121,6 @@ function initial_state{T}(method::ConjugateGradient, options, d, initial_x::Arra
     ConjugateGradientState("Conjugate Gradient",
                          length(initial_x),
                          copy(initial_x), # Maintain current state in state.x
-                         d.f_x, # Store current f in d.f_x
-                         1, # Track f calls in state.f_calls
-                         1, # Track g calls in state.g_calls
-                         0, # Track h calls in state.h_calls
                          copy(initial_x), # Maintain current state in state.x_previous
                          copy(grad(d)), # Store previous gradient in state.g_previous
                          T(NaN), # Store previous f in d.f_x_previous
@@ -136,7 +132,6 @@ function initial_state{T}(method::ConjugateGradient, options, d, initial_x::Arra
 end
 
 function update_state!{T}(d, state::ConjugateGradientState{T}, method::ConjugateGradient)
-        lssuccess = true
         # Reset the search direction if it becomes corrupted
         dphi0 = vecdot(d.g_x, state.s)
         if dphi0 >= 0
@@ -158,11 +153,10 @@ function update_state!{T}(d, state::ConjugateGradientState{T}, method::Conjugate
         # Pick the initial step size (HZ #I1-I2)
         state.alpha, state.mayterminate, f_update, g_update =
           LineSearches.alphatry(state.alpha, d, state.x, state.s, state.x_ls, state.g_ls, state.lsr)
-        state.f_calls, state.g_calls = state.f_calls + f_update, state.g_calls + g_update
         d.f_calls, d.g_calls = d.f_calls + f_update, d.g_calls + g_update
 
         # Determine the distance of movement along the search line
-        lssucces = do_linesearch(state, method, d)
+        lssuccess = do_linesearch(state, method, d)
 
         # Maintain a record of previous position
         copy!(state.x_previous, state.x)
@@ -175,7 +169,6 @@ function update_state!{T}(d, state::ConjugateGradientState{T}, method::Conjugate
 
         # Update the function value and gradient
         state.f_x_previous, d.f_x = d.f_x, value_grad!(d, state.x)
-        state.f_calls, state.g_calls = state.f_calls + 1, state.g_calls + 1
 
         # Check sanity of function and gradient
         if !isfinite(d.f_x)

@@ -207,7 +207,6 @@ NewtonTrustRegion(; initial_delta::Real = 1.0,
 type NewtonTrustRegionState{T}
     @add_generic_fields()
     x_previous::Array{T}
-    g::Array{T}
     g_previous::Array{T}
     f_x_previous::T
     s::Array{T}
@@ -241,20 +240,13 @@ function initial_state{T}(method::NewtonTrustRegion, options, d, initial_x::Arra
     f_x_previous, d.f_x = NaN, value_grad!(d, initial_x)
     stor = similar(initial_x)
     d.g!(initial_x, stor)
-    f_calls, g_calls = 1, 1
     H = Array(T, n, n)
     d.h!(initial_x, H)
-    h_calls = 1
 
     NewtonTrustRegionState("Newton's Method (Trust Region)", # Store string with model name in state.method
                          length(initial_x),
                          copy(initial_x), # Maintain current state in state.x
-                         d.f_x, # Store current f in state.f_x
-                         f_calls, # Track f calls in state.f_calls
-                         g_calls, # Track g calls in state.g_calls
-                         h_calls,
                          copy(initial_x), # Maintain current state in state.x_previous
-                         d.g_x, # Store current gradient in state.g
                          copy(d.g_x), # Store previous gradient in state.g_previous
                          T(NaN), # Store previous f in state.f_x_previous
                          similar(initial_x), # Maintain current search direction in state.s
@@ -287,7 +279,6 @@ function update_state!{T}(d, state::NewtonTrustRegionState{T}, method::NewtonTru
     # Update the function value and gradient
     copy!(state.g_previous, d.g_x)
     state.f_x_previous, d.f_x = d.f_x, value_grad!(d, state.x)
-    state.f_calls, state.g_calls = state.f_calls + 1, state.g_calls + 1
 
     # Update the trust region size based on the discrepancy between
     # the predicted and actual function values.  (Algorithm 4.1 in N&W)

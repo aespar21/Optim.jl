@@ -86,7 +86,7 @@ end
 
 function value(obj, x)
     obj.f_calls += 1
-    obj.f_x = obj.f(x)
+    obj.f(x)
 end
 
 function value_grad!(obj, x)

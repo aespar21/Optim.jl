@@ -32,18 +32,13 @@ end
 
 function initial_state{T}(method::BFGS, options, d, initial_x::Array{T})
     n = length(initial_x)
-    f_x = value_grad!(d, initial_x)
-
     invH = method.initial_invH(initial_x)
     # Maintain a cache for line search results
     # Trace the history of states visited
+    value_grad!(d, initial_x)
     BFGSState("BFGS",
               n,
               copy(initial_x), # Maintain current state in state.x
-              f_x, # Store current f in state.f_x
-              1, # Track f calls in state.f_calls
-              1, # Track g calls in state.g_calls
-              0, # Track h calls in state.h_calls
               copy(initial_x), # Maintain current state in state.x_previous
               copy(grad(d)), # Store previous gradient in state.g_previous
               T(NaN), # Store previous f in state.f_x_previous
@@ -58,7 +53,6 @@ end
 
 
 function update_state!{T}(d, state::BFGSState{T}, method::BFGS)
-    lssuccess = true
     # Set the search direction
     # Search direction is the negative gradient divided by the approximate Hessian
     A_mul_B!(state.s, state.invH, grad(d))
@@ -78,7 +72,7 @@ function update_state!{T}(d, state::BFGSState{T}, method::BFGS)
     push!(state.lsr, zero(T), d.f_x, dphi0)
 
     # Determine the distance of movement along the search line
-    lssucces = do_linesearch(state, method, d)
+    lssuccess = do_linesearch(state, method, d)
 
     # Maintain a record of previous position
     copy!(state.x_previous, state.x)

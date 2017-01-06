@@ -111,13 +111,10 @@ function initial_state{T}(method::LBFGS, options, d, initial_x::Array{T})
     n = length(initial_x)
     # Maintain a cache for line search results
     # Trace the history of states visited
+    value_grad!(d, initial_x)
     LBFGSState("L-BFGS",
               n,
               copy(initial_x), # Maintain current state in state.x
-              value_grad!(d, initial_x), # Store current f in state.f_x
-              1, # Track f calls in state.f_calls
-              1, # Track g calls in state.g_calls
-              0, # Track h calls in state.h_calls
               copy(initial_x), # Maintain current state in state.x_previous
               copy(grad(d)), # Store previous gradient in state.g_previous
               Array{T}(method.m), # state.rho
@@ -135,7 +132,6 @@ function initial_state{T}(method::LBFGS, options, d, initial_x::Array{T})
 end
 
 function update_state!{T}(d, state::LBFGSState{T}, method::LBFGS)
-    lssuccess = true
     n = state.n
     # Increment the number of steps we've had to perform
     state.pseudo_iteration += 1
@@ -177,7 +173,7 @@ function update_state!{T}(d, state::LBFGSState{T}, method::LBFGS)
         alphaguess = state.alpha
     end
 
-    lssucces = do_linesearch(state, method, d, alphaguess)
+    lssuccess = do_linesearch(state, method, d, alphaguess)
 
     # Maintain a record of previous position
     copy!(state.x_previous, state.x)
@@ -191,7 +187,7 @@ function update_state!{T}(d, state::LBFGSState{T}, method::LBFGS)
     # Save old f and g values to prepare for update_g! call
     state.f_x_previous = d.f_x
     copy!(state.g_previous, grad(d))
-    (lssuccess == false) # break on linesearch error
+    lssuccess == false # break on linesearch error
 end
 
 

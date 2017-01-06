@@ -28,13 +28,10 @@ type GradientDescentState{T}
 end
 
 function initial_state{T}(method::GradientDescent, options, d, initial_x::Array{T})
+    value_grad!(d, initial_x)
     GradientDescentState("Gradient Descent",
                          length(initial_x),
                          copy(initial_x), # Maintain current state in state.x
-                         value_grad!(d, initial_x), # Store current f in state.f_x
-                         1, # Track f calls in state.f_calls
-                         1, # Track g calls in state.g_calls
-                         0, # Track h calls in state.h_calls
                          copy(initial_x), # Maintain current state in state.x_previous
                          T(NaN), # Store previous f in state.f_x_previous
                          similar(initial_x), # Maintain current search direction in state.s
@@ -42,7 +39,6 @@ function initial_state{T}(method::GradientDescent, options, d, initial_x::Array{
 end
 
 function update_state!{T}(d, state::GradientDescentState{T}, method::GradientDescent)
-    lssuccess = true
     # Search direction is always the negative preconditioned gradient
     method.precondprep!(method.P, state.x)
     A_ldiv_B!(state.s, method.P, grad(d))
@@ -55,29 +51,12 @@ function update_state!{T}(d, state::GradientDescentState{T}, method::GradientDes
     push!(state.lsr, zero(T), d.f_x, dphi0)
 
     # Determine the distance of movement along the search line
-    try
-        state.alpha, f_update, g_update =
-            method.linesearch!(d, state.x, state.s, state.x_ls, state.g_ls,
-                               state.lsr, state.alpha, state.mayterminate)
-        state.f_calls, state.g_calls = state.f_calls + f_update, state.g_calls + g_update
-        d.f_calls, d.g_calls = d.f_calls + f_update, d.g_calls + g_update
-    catch ex
-        if isa(ex, LineSearches.LineSearchException)
-            lssuccess = false
-            state.f_calls, state.g_calls = state.f_calls + ex.f_update, state.g_calls + ex.g_update
-            d.f_calls, d.g_calls = d.f_calls + ex.f_update, d.g_calls + ex.g_update
-            state.alpha = ex.alpha
-            Base.warn("Linesearch failed, using alpha = $(state.alpha) and exiting optimization.")
-        else
-            rethrow(ex)
-        end
-    end
-
+    lssuccess = do_linesearch(state, method, d)
 
     # Maintain a record of previous position
     copy!(state.x_previous, state.x)
 
     # Update current position # x = x + alpha * s
     LinAlg.axpy!(state.alpha, state.s, state.x)
-    (lssuccess == false) # break on linesearch error
+    lssuccess == false # break on linesearch error
 end

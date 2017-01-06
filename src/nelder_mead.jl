@@ -143,10 +143,6 @@ function initial_state{T}(method::NelderMead, options, f, initial_x::Array{T})
 NelderMeadState("Nelder-Mead",
           n, # Dimensionality of the problem
           Array{T}(n), # Variable to hold final minimizer value for MultivariateOptimizationResults
-          f_simplex[i_order[1]], # Store Nelder Mead objective in state.f_x = state.f_lowest
-          m,
-          0,
-          0,
           m, # Number of vertices in the simplex
           simplex, # Maintain simplex in state.simplex
           centroid(simplex,  i_order[m]), # Maintain centroid in state.centroid
@@ -185,14 +181,12 @@ function update_state!{T}(f, state::NelderMeadState{T}, method::NelderMead)
     end
 
     f_reflect = value(f, state.x_reflect)
-    state.f_calls += 1
     if f_reflect < state.f_lowest
         # Compute an expansion
         @inbounds for j in 1:n
             state.x_cache[j] = state.x_centroid[j] + state.β *(state.x_reflect[j] - state.x_centroid[j])
         end
         f_expand = value(f, state.x_cache)
-        state.f_calls += 1
 
         if f_expand < f_reflect
             copy!(state.simplex[state.i_order[m]], state.x_cache)
@@ -221,7 +215,6 @@ function update_state!{T}(f, state::NelderMeadState{T}, method::NelderMead)
                 @inbounds state.x_cache[j] = state.x_centroid[j] + state.γ * (state.x_reflect[j]-state.x_centroid[j])
             end
             f_outside_contraction = value(f, state.x_cache)
-            state.f_calls += 1
             if f_outside_contraction < f_reflect
                 copy!(state.simplex[state.i_order[m]], state.x_cache)
                 @inbounds state.f_simplex[state.i_order[m]] = f_outside_contraction
@@ -237,7 +230,6 @@ function update_state!{T}(f, state::NelderMeadState{T}, method::NelderMead)
                 @inbounds state.x_cache[j] = state.x_centroid[j] - γ *(state.x_reflect[j] - state.x_centroid[j])
             end
             f_inside_contraction = value(f, state.x_cache)
-            state.f_calls += 1
             if f_inside_contraction < f_highest
                 copy!(state.simplex[state.i_order[m]], state.x_cache)
                 @inbounds state.f_simplex[state.i_order[m]] = f_inside_contraction
@@ -254,7 +246,6 @@ function update_state!{T}(f, state::NelderMeadState{T}, method::NelderMead)
             ord = state.i_order[i]
             copy!(state.simplex[ord], state.x_lowest + state.δ*(state.simplex[ord]-state.x_lowest))
             state.f_simplex[ord] = value(f, state.simplex[ord])
-            state.f_calls += 1
         end
         step_type = "shrink"
         sortperm!(state.i_order, state.f_simplex)
@@ -268,13 +259,12 @@ function after_while!(f, state, method::NelderMead, options)
     sortperm!(state.i_order, state.f_simplex)
     x_centroid_min = centroid(state.simplex, state.i_order[state.m])
     f_centroid_min = value(f, x_centroid_min)
-    state.f_calls += 1
     f_min, i_f_min = findmin(state.f_simplex)
     x_min = state.simplex[i_f_min]
     if f_centroid_min < f_min
         x_min = x_centroid_min
         f_min = f_centroid_min
     end
-    state.f_x = f_min
+    f.f_x = f_min
     state.x[:] = x_min
 end

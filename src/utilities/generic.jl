@@ -11,10 +11,6 @@ end
     method_string::String
     n::Int64
     x::Array{T}
-    f_x::T
-    f_calls::Int64
-    g_calls::Int64
-    h_calls::Int64
 end
 
 @def add_linesearch_fields begin
