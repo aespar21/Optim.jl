@@ -9,7 +9,7 @@ end
 # TODO decide if this is wanted and/or necessary
 @def add_generic_fields begin
     method_string::String
-    n::Int64
+    n::Int
     x::Array{T}
 end
 

@@ -25,7 +25,7 @@ type AcceleratedGradientDescentState{T}
     @add_generic_fields()
     x_previous::Array{T}
     f_x_previous::T
-    iteration::Int64
+    iteration::Int
     y::Array{T}
     y_previous::Array{T}
     s::Array{T}
