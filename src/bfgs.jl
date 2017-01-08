@@ -1,9 +1,9 @@
 # Translation from our variables to Nocedal and Wright's
 # JMW's dx <=> NW's s
 # JMW's dg <=> NW' y
-immutable BFGS{L<:Function, H<:Function} <: Optimizer
-    linesearch!::L
-    initial_invH::H
+immutable BFGS <: Optimizer
+    linesearch!
+    initial_invH
 end
 #= uncomment for v0.8.0
 BFGS(; linesearch = LineSearches.hagerzhang!, initial_invH = x -> eye(eltype(x), length(x))) =
