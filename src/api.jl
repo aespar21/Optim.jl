@@ -33,16 +33,16 @@ f_trace(r::OptimizationResults) = [ state.value for state in trace(r) ]
 g_norm_trace(r::OptimizationResults) = error("g_norm_trace is not implemented for $(method(r)).")
 g_norm_trace(r::MultivariateOptimizationResults) = [ state.g_norm for state in trace(r) ]
 
-f_calls(r::OptimizationResults) = r.f_calls
-f_calls(obj) = obj.f_calls
+f_calls(r::OptimizationResults) = r.f_calls[end]
+f_calls(obj) = obj.f_calls[end]
 
 g_calls(r::OptimizationResults) = error("g_calls is not implemented for $(method(r)).")
 g_calls(r::MultivariateOptimizationResults) = r.g_calls
 g_calls(obj::NonDifferentiableFunction) = 0
-g_calls(obj) = obj.g_calls
+g_calls(obj) = obj.g_calls[end]
 
 h_calls(obj) = 0
-h_calls(obj::TwiceDifferentiableFunction) = obj.h_calls
+h_calls(obj::TwiceDifferentiableFunction) = obj.h_calls[end]
 
 converged(r::UnivariateOptimizationResults) = r.converged
 converged(r::MultivariateOptimizationResults) = r.x_converged || r.f_converged || r.g_converged

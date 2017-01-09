@@ -162,16 +162,16 @@ function update_h!(d, state, method::SecondOrderSolver)
 end
 
 function clear_object!(d::NonDifferentiableFunction)
-    d.f_calls = 0
+    d.f_calls = [0]
 end
 function clear_object!(d::DifferentiableFunction)
-    d.f_calls = 0
-    d.g_calls = 0
+    d.f_calls = [0]
+    d.g_calls = [0]
 end
 function clear_object!(d::TwiceDifferentiableFunction)
-    d.f_calls = 0
-    d.g_calls = 0
-    d.h_calls = 0
+    d.f_calls = [0]
+    d.g_calls = [0]
+    d.h_calls = [0]
 end
 
 after_while!(d, state, method, options) = nothing

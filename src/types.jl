@@ -70,9 +70,9 @@ type MultivariateOptimizationResults{T,N,M} <: OptimizationResults
     g_converged::Bool
     g_tol::Float64
     trace::OptimizationTrace{M}
-    f_calls::Int
-    g_calls::Int
-    h_calls::Int
+    f_calls
+    g_calls
+    h_calls
 end
 
 type UnivariateOptimizationResults{T,M} <: OptimizationResults
@@ -87,7 +87,7 @@ type UnivariateOptimizationResults{T,M} <: OptimizationResults
     rel_tol::T
     abs_tol::T
     trace::OptimizationTrace{M}
-    f_calls::Int
+    f_calls
 end
 
 function Base.show(io::IO, t::OptimizationState)
