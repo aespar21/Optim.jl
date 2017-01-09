@@ -9,10 +9,11 @@ let
         return
     end
 
-    res = optimize(f, g!, eye(2), GradientDescent())
+    for m in (AcceleratedGradientDescent(), GradientDescent(), MomentumGradientDescent(), NelderMead(), SimulatedAnnealing())
+        res = optimize(f, g!, eye(2), GradientDescent())
 
-    @test norm(vec(Optim.minimizer(res) - [10.0 0.0; 0.0 5.0])) < 10e-8
-
+        @test norm(vec(Optim.minimizer(res) - [10.0 0.0; 0.0 5.0])) < 10e-8
+    end
     # TODO: Get finite differencing to work for generic arrays as well
     # optimize(f, eye(2), method = :gradient_descent)
 end
