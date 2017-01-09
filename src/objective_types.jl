@@ -1,16 +1,16 @@
-type NonDifferentiableFunction
+type NonDifferentiable
     f
     f_x
     f_calls
 end
-NonDifferentiableFunction{T}(f, x_seed::Array{T}) = NonDifferentiableFunction(f, zero(T), [0])
+NonDifferentiable{T}(f, x_seed::Array{T}) = NonDifferentiable(f, zero(T), [0])
 
 type FinDiff
     method
 end
 FinDiff(;g_method = :central) = FinDiff(g_method)
 
-type DifferentiableFunction
+type Differentiable
     f
     g!
     fg!
@@ -19,31 +19,32 @@ type DifferentiableFunction
     f_calls
     g_calls
 end
-DifferentiableFunction{T}(f, g!, fg!, x_seed::Array{T}) = DifferentiableFunction(f, g!, fg!, zero(T), similar(x_seed), [0], [0])
-function DifferentiableFunction{T}(f::Function, x_seed::Array{T}; g_method = FinDiff())
+Differentiable{T}(f, g!, fg!, x_seed::Array{T}) = Differentiable(f, g!, fg!, zero(T), similar(x_seed), [0], [0])
+function Differentiable{T}(f::Function, x_seed::Array{T}; g_method = FinDiff())
+    n_x = length(x_seed)
     f_calls = [0]
     g_calls = [0]
     function g!(x::Array, storage::Array)
         Calculus.finite_difference!(f, x, storage, g_method.method)
-        f_calls[1] .+= g_method.method == :central ? 2*length(initial_x) : length(initial_x)
+        f_calls[1] .+= g_method.method == :central ? 2*n_x : n_x
         return
     end
     function fg!(x::Array, storage::Array)
         g!(x, storage)
         return f(x)
     end
-    return DifferentiableFunction(f, g!, fg!, zero(T), similar(x_seed), f_calls, g_calls)
+    return Differentiable(f, g!, fg!, zero(T), similar(x_seed), f_calls, g_calls)
 end
 
-function DifferentiableFunction{T}(f::Function, g!::Function, x_seed::Array{T})
+function Differentiable{T}(f::Function, g!::Function, x_seed::Array{T})
     function fg!(x::Array, storage::Array)
         g!(x, storage)
         return f(x)
     end
-    return DifferentiableFunction(f, g!, fg!, zero(T), similar(x_seed), [0], [0])
+    return Differentiable(f, g!, fg!, zero(T), similar(x_seed), [0], [0])
 end
 
-type TwiceDifferentiableFunction
+type TwiceDifferentiable
     f
     g!
     fg!
@@ -55,12 +56,12 @@ type TwiceDifferentiableFunction
     g_calls
     h_calls
 end
-function TwiceDifferentiableFunction{T}(f, g!, fg!, h!, x_seed::Array{T})
+function TwiceDifferentiable{T}(f, g!, fg!, h!, x_seed::Array{T})
     n_x = length(x_seed)
-    TwiceDifferentiableFunction(f, g!, fg!, h!, zero(T),
+    TwiceDifferentiable(f, g!, fg!, h!, zero(T),
                                 similar(x_seed), Array{T}(n_x, n_x), [0], [0], [0])
 end
-function TwiceDifferentiableFunction{T}(f::Function, x_seed::Array{T}; method = FinDiff())
+function TwiceDifferentiable{T}(f::Function, x_seed::Array{T}; method = FinDiff())
     n_x = length(x_seed)
     f_calls = [0]
     g_calls = [0]
@@ -79,11 +80,11 @@ function TwiceDifferentiableFunction{T}(f::Function, x_seed::Array{T}; method = 
         f_calls[1] .+= 2*n_x^2-2n_x # (n^2-n)/2 off-diagonal elements with 4 calls + n diagonals with 2 calls
         return
     end
-    return TwiceDifferentiableFunction(f, g!, fg!, h!, zero(T),
+    return TwiceDifferentiable(f, g!, fg!, h!, zero(T),
                                        similar(x_seed), Array{T}(n_x, n_x), f_calls, g_calls, h_calls)
 end
 
-function TwiceDifferentiableFunction{T}(f::Function,
+function TwiceDifferentiable{T}(f::Function,
                                      g!::Function,
                                      h!::Function,
                                      x_seed::Array{T})
@@ -92,7 +93,7 @@ function TwiceDifferentiableFunction{T}(f::Function,
         g!(x, storage)
         return f(x)
     end
-    return TwiceDifferentiableFunction(f, g!, fg!, h!, zero(T),
+    return TwiceDifferentiable(f, g!, fg!, h!, zero(T),
                                        similar(x_seed), Array{T}(n_x, n_x), [0], [0], [0])
 end
 
@@ -109,3 +110,7 @@ end
 
 grad(obj) = obj.g_x
 grad(obj, i) = obj.g_x[i]
+
+const NonDifferentiableFunction = NonDifferentiable
+const DifferentiableFunction = Differentiable
+const TwiceDifferentiableFunction = TwiceDifferentiable
