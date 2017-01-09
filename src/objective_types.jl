@@ -110,7 +110,3 @@ end
 
 grad(obj) = obj.g_x
 grad(obj, i) = obj.g_x[i]
-
-const NonDifferentiableFunction = NonDifferentiable
-const DifferentiableFunction = Differentiable
-const TwiceDifferentiableFunction = TwiceDifferentiable

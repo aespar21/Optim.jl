@@ -28,7 +28,7 @@ let
    GRTOL = 1e-6
    N = 100
    initial_x = zeros(N)
-   df = DifferentiableFunction(X->plap([0;X;0]),
+   df = Differentiable(X->plap([0;X;0]),
                                (X, G)->copy!(G, (plap1([0;X;0]))[2:end-1]),
                                initial_x)
    P = precond(initial_x)

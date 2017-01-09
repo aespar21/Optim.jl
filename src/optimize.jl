@@ -28,7 +28,7 @@ function optimize{F<:Function, G<:Function}(f::F, g!::G, initial_x::Array; kwarg
     checked_kwargs, method = check_kwargs(kwargs, BFGS())
     optimize(f, g!, initial_x, method, Options(;checked_kwargs...))
 end
-function optimize(d::DifferentiableFunction, initial_x::Array; kwargs...)
+function optimize(d::Differentiable, initial_x::Array; kwargs...)
     checked_kwargs, method = check_kwargs(kwargs, BFGS())
     optimize(d, initial_x, method, Options(checked_kwargs...))
 end
@@ -41,7 +41,7 @@ function optimize{F<:Function, G<:Function, H<:Function}(f::F,
     optimize(f, g!, h!, initial_x, method, Options(checked_kwargs...))
 end
 
-function optimize(d::TwiceDifferentiableFunction, initial_x::Array; kwargs...)
+function optimize(d::TwiceDifferentiable, initial_x::Array; kwargs...)
     checked_kwargs, method = check_kwargs(kwargs, Newton())
     optimize(d, initial_x, method, Options(;kwargs...))
 end
@@ -52,22 +52,22 @@ function optimize(d, initial_x::Array,
     optimize(d, initial_x, method, options)
 end
 optimize(d::Function, initial_x, options::Options) = optimize(d, initial_x, NelderMead(), options)
-optimize(d::DifferentiableFunction, initial_x, options::Options) = optimize(d, initial_x, BFGS(), options)
-optimize(d::TwiceDifferentiableFunction, initial_x, options::Options) = optimize(d, initial_x, Newton(), options)
+optimize(d::Differentiable, initial_x, options::Options) = optimize(d, initial_x, BFGS(), options)
+optimize(d::TwiceDifferentiable, initial_x, options::Options) = optimize(d, initial_x, Newton(), options)
 
 function optimize{F<:Function, G<:Function}(f::F,
                   g!::G,
                   initial_x::Array,
                   method::Optimizer,
                   options::Options = Options())
-    d = DifferentiableFunction(f, g!, initial_x)
+    d = Differentiable(f, g!, initial_x)
     optimize(d, initial_x, method, options)
 end
 function optimize{F<:Function, G<:Function}(f::F,
                   g!::G,
                   initial_x::Array,
                   options::Options)
-    d = DifferentiableFunction(f, g!, initial_x)
+    d = Differentiable(f, g!, initial_x)
     optimize(d, initial_x, BFGS(), options)
 end
 
@@ -77,7 +77,7 @@ function optimize{F<:Function, G<:Function, H<:Function}(f::F,
                   initial_x::Array,
                   method::Optimizer,
                   options::Options = Options())
-    d = TwiceDifferentiableFunction(f, g!, h!, initial_x)
+    d = TwiceDifferentiable(f, g!, h!, initial_x)
     optimize(d, initial_x, method, options)
 end
 function optimize{F<:Function, G<:Function, H<:Function}(f::F,
@@ -85,7 +85,7 @@ function optimize{F<:Function, G<:Function, H<:Function}(f::F,
                   h!::H,
                   initial_x::Array,
                   options)
-    d = TwiceDifferentiableFunction(f, g!, h!, initial_x)
+    d = TwiceDifferentiable(f, g!, h!, initial_x)
     optimize(d, initial_x, Newton(), options)
 end
 
@@ -95,7 +95,7 @@ function optimize{F<:Function, T, M <: Union{FirstOrderSolver, SecondOrderSolver
                   options::Options)
     if !options.autodiff
         if M <: FirstOrderSolver
-            d = DifferentiableFunction(f, initial_x)
+            d = Differentiable(f, initial_x)
         else
             error("No gradient or Hessian was provided. Either provide a gradient and Hessian, set autodiff = true in the Options if applicable, or choose a solver that doesn't require a Hessian.")
         end
@@ -110,18 +110,18 @@ function optimize{F<:Function, T, M <: Union{FirstOrderSolver, SecondOrderSolver
         end
 
         if M <: FirstOrderSolver
-            d = DifferentiableFunction(f, g!, fg!, initial_x)
+            d = Differentiable(f, g!, fg!, initial_x)
         else
             hcfg = ForwardDiff.HessianConfig(initial_x)
             h! = (x, out) -> ForwardDiff.hessian!(out, f, x, hcfg)
-            d = TwiceDifferentiableFunction(f, g!, fg!, h!, initial_x)
+            d = TwiceDifferentiable(f, g!, fg!, h!, initial_x)
         end
     end
 
     optimize(d, initial_x, method, options)
 end
 
-function optimize(d::DifferentiableFunction,
+function optimize(d::Differentiable,
                   initial_x::Array,
                   method::Newton,
                   options::Options)
@@ -131,10 +131,10 @@ function optimize(d::DifferentiableFunction,
         hcfg = ForwardDiff.HessianConfig(initial_x)
         h! = (x, out) -> ForwardDiff.hessian!(out, d.f, x, hcfg)
     end
-    optimize(TwiceDifferentiableFunction(d.f, d.g!, d.fg!, h!, initial_x), initial_x, method, options)
+    optimize(TwiceDifferentiable(d.f, d.g!, d.fg!, h!, initial_x), initial_x, method, options)
 end
 
-function optimize(d::DifferentiableFunction,
+function optimize(d::Differentiable,
                   initial_x::Array,
                   method::NewtonTrustRegion,
                   options::Options)
@@ -144,7 +144,7 @@ function optimize(d::DifferentiableFunction,
         hcfg = ForwardDiff.HessianConfig(initial_x)
         h! = (x, out) -> ForwardDiff.hessian!(out, d.f, x, hcfg)
     end
-    optimize(TwiceDifferentiableFunction(d.f, d.g!, d.fg!, h!, initial_x), initial_x, method, options)
+    optimize(TwiceDifferentiable(d.f, d.g!, d.fg!, h!, initial_x), initial_x, method, options)
 end
 
 update_g!(d, state, method) = nothing
@@ -161,14 +161,14 @@ function update_h!(d, state, method::SecondOrderSolver)
     d.h!(state.x, state.H)
 end
 
-function clear_object!(d::NonDifferentiableFunction)
+function clear_object!(d::NonDifferentiable)
     d.f_calls = [0]
 end
-function clear_object!(d::DifferentiableFunction)
+function clear_object!(d::Differentiable)
     d.f_calls = [0]
     d.g_calls = [0]
 end
-function clear_object!(d::TwiceDifferentiableFunction)
+function clear_object!(d::TwiceDifferentiable)
     d.f_calls = [0]
     d.g_calls = [0]
     d.h_calls = [0]
@@ -176,7 +176,7 @@ end
 
 after_while!(d, state, method, options) = nothing
 optimize{T, M<:Union{SimulatedAnnealing, NelderMead, ParticleSwarm}}(d::Function, initial_x::Array{T}, method::M, options::Options)=
-optimize(NonDifferentiableFunction(d, initial_x), initial_x, method, options)
+optimize(NonDifferentiable(d, initial_x), initial_x, method, options)
 function optimize{T, M<:Optimizer}(d, initial_x::Array{T}, method::M, options::Options)
     t0 = time() # Initial time stamp used to control early stopping by options.time_limit
     clear_object!(d)

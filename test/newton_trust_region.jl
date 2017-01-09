@@ -147,7 +147,7 @@ let
         storage[1, 1] = 12.0 * (x[1] - 5.0)^2
     end
     initial_x = [0.0]
-    d = TwiceDifferentiableFunction(f, g!, h!, initial_x)
+    d = TwiceDifferentiable(f, g!, h!, initial_x)
 
     results = Optim.optimize(d, initial_x, NewtonTrustRegion())
     @assert length(results.trace) == 0
@@ -172,7 +172,7 @@ let
         storage[2, 2] = eta
     end
     initial_x = Float64[127, 921]
-    d = TwiceDifferentiableFunction(f_2, g!_2, h!_2, initial_x)
+    d = TwiceDifferentiable(f_2, g!_2, h!_2, initial_x)
 
     results = Optim.optimize(d, initial_x, NewtonTrustRegion())
     @assert results.g_converged
@@ -182,7 +182,7 @@ let
     # Optim.UnconstrainedProblems.examples
     for (name, prob) in Optim.UnconstrainedProblems.examples
     	if prob.istwicedifferentiable
-    		ddf = DifferentiableFunction(prob.f, prob.g!, prob.initial_x)
+    		ddf = Differentiable(prob.f, prob.g!, prob.initial_x)
     		res = Optim.optimize(ddf, prob.initial_x, NewtonTrustRegion(), Optim.Options(autodiff = true))
     		@assert norm(Optim.minimizer(res) - prob.solutions) < 1e-2
     		res = Optim.optimize(ddf.f, prob.initial_x, NewtonTrustRegion(), Optim.Options(autodiff = true))
