@@ -25,7 +25,7 @@ function DifferentiableFunction{T}(f::Function, x_seed::Array{T}; g_method = Fin
     g_calls = [0]
     function g!(x::Array, storage::Array)
         Calculus.finite_difference!(f, x, storage, g_method.method)
-        f_calls[1] .+= g_method.method == :central ? 2 : 1
+        f_calls[1] .+= g_method.method == :central ? 2*length(initial_x) : length(initial_x)
         return
     end
     function fg!(x::Array, storage::Array)
@@ -67,7 +67,7 @@ function TwiceDifferentiableFunction{T}(f::Function, x_seed::Array{T}; g_method 
     h_calls = [0]
     function g!(x::Vector, storage::Vector)
         Calculus.finite_difference!(f, x, storage, g_method.method)
-        f_calls[1] .+= g_method.method == :central ? 2 : 1
+        f_calls[1] .+= g_method.method == :central ? 2*n_x : n_x
         return
     end
     function fg!(x::Vector, storage::Vector)
@@ -76,7 +76,7 @@ function TwiceDifferentiableFunction{T}(f::Function, x_seed::Array{T}; g_method 
     end
     function h!(x::Vector, storage::Matrix)
         Calculus.finite_difference_hessian!(f, x, storage)
-        f_calls[1] .+= 3
+        f_calls[1] .+= 2*n_x^2-2n_x # (n^2-n)/2 off-diagonal elements with 4 calls + n diagonals with 2 calls 
         return
     end
     return TwiceDifferentiableFunction(f, g!, fg!, h!, zero(T),
