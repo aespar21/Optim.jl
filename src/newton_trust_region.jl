@@ -75,7 +75,7 @@ function solve_tr_subproblem!{T}(gr::Vector{T},
     H_ridged = copy(H)
 
     # Cache the inner products between the eigenvectors and the gradient.
-    qg = Array(T, n)
+    qg = similar(gr)
     for i=1:n
         qg[i] = vecdot(H_eig[:vectors][:, i], gr)
     end

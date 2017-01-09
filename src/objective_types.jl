@@ -108,5 +108,6 @@ function value_grad!(obj, x)
     obj.f_x = obj.fg!(x, obj.g_x)
 end
 
+#get_grad(obj) ?
 grad(obj) = obj.g_x
 grad(obj, i) = obj.g_x[i]
