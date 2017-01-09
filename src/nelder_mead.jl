@@ -142,15 +142,15 @@ function initial_state{T}(method::NelderMead, options, f, initial_x::Array{T})
 
 NelderMeadState("Nelder-Mead",
           n, # Dimensionality of the problem
-          Array{T}(n), # Variable to hold final minimizer value for MultivariateOptimizationResults
+          similar(initial_x), # Variable to hold final minimizer value for MultivariateOptimizationResults
           m, # Number of vertices in the simplex
           simplex, # Maintain simplex in state.simplex
           centroid(simplex,  i_order[m]), # Maintain centroid in state.centroid
-          Array{T}(n), # Store cache in state.x_lowest
-          Array{T}(n), # Store cache in state.x_second_highest
-          Array{T}(n), # Store cache in state.x_highest
-          Array{T}(n), # Store cache in state.x_reflect
-          Array{T}(n), # Store cache in state.x_cache
+          similar(initial_x), # Store cache in state.x_lowest
+          similar(initial_x), # Store cache in state.x_second_highest
+          similar(initial_x), # Store cache in state.x_highest
+          similar(initial_x), # Store cache in state.x_reflect
+          similar(initial_x), # Store cache in state.x_cache
           f_simplex, # Store objective values at the vertices in state.f_simplex
           T(nmobjective(f_simplex, n, m)), # Store nmobjective in state.nm_x
           f_simplex[i_order[1]], # Store lowest f in state.f_lowest
