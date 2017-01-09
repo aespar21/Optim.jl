@@ -60,14 +60,14 @@ function TwiceDifferentiableFunction{T}(f, g!, fg!, h!, x_seed::Array{T})
     TwiceDifferentiableFunction(f, g!, fg!, h!, zero(T),
                                 similar(x_seed), Array{T}(n_x, n_x), [0], [0], [0])
 end
-function TwiceDifferentiableFunction{T}(f::Function, x_seed::Array{T}; g_method = FinDiff())
+function TwiceDifferentiableFunction{T}(f::Function, x_seed::Array{T}; method = FinDiff())
     n_x = length(x_seed)
     f_calls = [0]
     g_calls = [0]
     h_calls = [0]
     function g!(x::Vector, storage::Vector)
-        Calculus.finite_difference!(f, x, storage, g_method.method)
-        f_calls[1] .+= g_method.method == :central ? 2*n_x : n_x
+        Calculus.finite_difference!(f, x, storage, method.method)
+        f_calls[1] .+= method.method == :central ? 2*n_x : n_x
         return
     end
     function fg!(x::Vector, storage::Vector)
@@ -76,7 +76,7 @@ function TwiceDifferentiableFunction{T}(f::Function, x_seed::Array{T}; g_method 
     end
     function h!(x::Vector, storage::Matrix)
         Calculus.finite_difference_hessian!(f, x, storage)
-        f_calls[1] .+= 2*n_x^2-2n_x # (n^2-n)/2 off-diagonal elements with 4 calls + n diagonals with 2 calls 
+        f_calls[1] .+= 2*n_x^2-2n_x # (n^2-n)/2 off-diagonal elements with 4 calls + n diagonals with 2 calls
         return
     end
     return TwiceDifferentiableFunction(f, g!, fg!, h!, zero(T),
