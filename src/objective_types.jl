@@ -5,11 +5,6 @@ type NonDifferentiable
 end
 NonDifferentiable{T}(f, x_seed::Array{T}) = NonDifferentiable(f, zero(T), [0])
 
-type FinDiff
-    method
-end
-FinDiff(;g_method = :central) = FinDiff(g_method)
-
 type Differentiable
     f
     g!
@@ -20,17 +15,28 @@ type Differentiable
     g_calls
 end
 Differentiable{T}(f, g!, fg!, x_seed::Array{T}) = Differentiable(f, g!, fg!, zero(T), similar(x_seed), [0], [0])
-function Differentiable{T}(f::Function, x_seed::Array{T}; method = FinDiff())
+function Differentiable{T}(f::Function, x_seed::Array{T}; method = :finitediff)
     n_x = length(x_seed)
     f_calls = [0]
     g_calls = [0]
-    function g!(x::Array, storage::Array)
-        Calculus.finite_difference!(x->(f_calls[1]+=1;f(x)), x, storage, method.method)
-        return
-    end
-    function fg!(x::Array, storage::Array)
-        g!(x, storage)
-        return f(x)
+    if method == :finitediff
+        function g!(x::Array, storage::Array)
+            Calculus.finite_difference!(x->(f_calls[1]+=1;f(x)), x, storage, :central)
+            return
+        end
+        function fg!(x::Array, storage::Array)
+            g!(x, storage)
+            return f(x)
+        end
+    elseif method == :forwarddiff
+        gcfg = ForwardDiff.GradientConfig(initial_x)
+        g! = (x, out) -> ForwardDiff.gradient!(out, f, x, gcfg)
+
+        fg! = (x, out) -> begin
+            gr_res = DiffBase.DiffResult(zero(T), out)
+            ForwardDiff.gradient!(gr_res, f, x, gcfg)
+            DiffBase.value(gr_res)
+        end
     end
     return Differentiable(f, g!, fg!, zero(T), similar(x_seed), f_calls, g_calls)
 end
@@ -60,25 +66,45 @@ function TwiceDifferentiable{T}(f, g!, fg!, h!, x_seed::Array{T})
     TwiceDifferentiable(f, g!, fg!, h!, zero(T),
                                 similar(x_seed), Array{T}(n_x, n_x), [0], [0], [0])
 end
-function TwiceDifferentiable{T}(f::Function, x_seed::Array{T}; method = FinDiff())
+function TwiceDifferentiable{T}(f::Function, x_seed::Array{T}; method = :finitediff)
     n_x = length(x_seed)
     f_calls = [0]
     g_calls = [0]
     h_calls = [0]
-    function g!(x::Vector, storage::Vector)
-        Calculus.finite_difference!(x->(f_calls[1]+=1;f(x)), x, storage, method.method)
-        return
-    end
-    function fg!(x::Vector, storage::Vector)
-        g!(x, storage)
-        return f(x)
-    end
-    function h!(x::Vector, storage::Matrix)
-        Calculus.finite_difference_hessian!(x->(f_calls[1]+=1;f(x)), x, storage)
-        return
+    if method = :finitediff
+        function g!(x::Vector, storage::Vector)
+            Calculus.finite_difference!(x->(f_calls[1]+=1;f(x)), x, storage, method.method)
+            return
+        end
+        function fg!(x::Vector, storage::Vector)
+            g!(x, storage)
+            return f(x)
+        end
+        function h!(x::Vector, storage::Matrix)
+            Calculus.finite_difference_hessian!(x->(f_calls[1]+=1;f(x)), x, storage)
+            return
+        end
+    elseif method == :forwarddiff
+        gcfg = ForwardDiff.GradientConfig(initial_x)
+        g! = (x, out) -> ForwardDiff.gradient!(out, f, x, gcfg)
+
+        fg! = (x, out) -> begin
+            gr_res = DiffBase.DiffResult(zero(T), out)
+            ForwardDiff.gradient!(gr_res, f, x, gcfg)
+            DiffBase.value(gr_res)
+        end
+
+        hcfg = ForwardDiff.HessianConfig(initial_x)
+        h! = (x, out) -> ForwardDiff.hessian!(out, f, x, hcfg)
     end
     return TwiceDifferentiable(f, g!, fg!, h!, zero(T),
                                        similar(x_seed), Array{T}(n_x, n_x), f_calls, g_calls, h_calls)
+end
+
+function TwiceDifferentiable(d::Differentiable)
+    hcfg = ForwardDiff.HessianConfig(initial_x)
+    h! = (x, out) -> ForwardDiff.hessian!(out, d.f, x, hcfg)
+    TwiceDifferentiable#FIXME
 end
 
 function TwiceDifferentiable{T}(f::Function,

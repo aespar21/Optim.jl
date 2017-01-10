@@ -93,45 +93,18 @@ function optimize{F<:Function, T, M <: Union{FirstOrderSolver, SecondOrderSolver
                   initial_x::Array{T},
                   method::M,
                   options::Options)
-    if !options.autodiff
-        if M <: FirstOrderSolver
-            d = Differentiable(f, initial_x)
-        else
-            error("No gradient or Hessian was provided. Either provide a gradient and Hessian, set autodiff = true in the Options if applicable, or choose a solver that doesn't require a Hessian.")
-        end
+    if M <: FirstOrderSolver
+        return optimize(Differentiable(f, initial_x), initial_x, method, options)
     else
-        gcfg = ForwardDiff.GradientConfig(initial_x)
-        g! = (x, out) -> ForwardDiff.gradient!(out, f, x, gcfg)
-
-        fg! = (x, out) -> begin
-            gr_res = DiffBase.DiffResult(zero(T), out)
-            ForwardDiff.gradient!(gr_res, f, x, gcfg)
-            DiffBase.value(gr_res)
-        end
-
-        if M <: FirstOrderSolver
-            d = Differentiable(f, g!, fg!, initial_x)
-        else
-            hcfg = ForwardDiff.HessianConfig(initial_x)
-            h! = (x, out) -> ForwardDiff.hessian!(out, f, x, hcfg)
-            d = TwiceDifferentiable(f, g!, fg!, h!, initial_x)
-        end
+        return optimize(TwiceDifferentiable(f, initial_x), initial_x, method, options)
     end
-
-    optimize(d, initial_x, method, options)
 end
 
 function optimize(d::Differentiable,
                   initial_x::Array,
                   method::Newton,
                   options::Options)
-    if !options.autodiff
-        throw(ArgumentError("No Hessian was provided. Either provide a Hessian, set autodiff = true in the Options if applicable, or choose a solver that doesn't require a Hessian."))
-    else
-        hcfg = ForwardDiff.HessianConfig(initial_x)
-        h! = (x, out) -> ForwardDiff.hessian!(out, d.f, x, hcfg)
-    end
-    optimize(TwiceDifferentiable(d.f, d.g!, d.fg!, h!, initial_x), initial_x, method, options)
+    optimize(TwiceDifferentiable(d), initial_x, method, options)
 end
 
 function optimize(d::Differentiable,
