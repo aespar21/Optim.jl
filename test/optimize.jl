@@ -1,4 +1,4 @@
-let
+@testset "optimize" begin
     eta = 0.9
 
     function f1(x)
@@ -20,40 +20,40 @@ let
     initial_x = [127.0, 921.0]
 
     results = optimize(f1, g1, h1, initial_x)
-    @assert Optim.g_converged(results)
-    @assert norm(Optim.minimizer(results) - [0.0, 0.0]) < 0.01
+    @test Optim.g_converged(results)
+    @test norm(Optim.minimizer(results) - [0.0, 0.0]) < 0.01
 
     results = optimize(f1, g1, initial_x)
-    @assert Optim.g_converged(results)
-    @assert norm(Optim.minimizer(results) - [0.0, 0.0]) < 0.01
+    @test Optim.g_converged(results)
+    @test norm(Optim.minimizer(results) - [0.0, 0.0]) < 0.01
 
     results = optimize(f1, initial_x)
-    @assert Optim.g_converged(results)
-    @assert norm(Optim.minimizer(results) - [0.0, 0.0]) < 0.01
+    @test Optim.g_converged(results)
+    @test norm(Optim.minimizer(results) - [0.0, 0.0]) < 0.01
 
     results = optimize(f1, initial_x, Optim.Options(autodiff = true))
-    @assert Optim.g_converged(results)
-    @assert norm(Optim.minimizer(results) - [0.0, 0.0]) < 0.01
+    @test Optim.g_converged(results)
+    @test norm(Optim.minimizer(results) - [0.0, 0.0]) < 0.01
 
     # tests for bfgs_initial_invH
     initial_invH = zeros(2,2)
     h1(initial_x, initial_invH)
     initial_invH = diagm(diag(initial_invH))
     results = optimize(Differentiable(f1, g1, initial_x), [127.0, 921.0], BFGS(initial_invH = x -> initial_invH), Optim.Options())
-    @assert Optim.g_converged(results)
-    @assert norm(Optim.minimizer(results) - [0.0, 0.0]) < 0.01
+    @test Optim.g_converged(results)
+    @test norm(Optim.minimizer(results) - [0.0, 0.0]) < 0.01
 
     # Tests for PR #302
     results = optimize(cos, 0, 2pi);
-    @assert norm(Optim.minimizer(results) - pi) < 0.01
+    @test norm(Optim.minimizer(results) - pi) < 0.01
     results = optimize(cos, 0.0, 2pi);
-    @assert norm(Optim.minimizer(results) - pi) < 0.01
+    @test norm(Optim.minimizer(results) - pi) < 0.01
     results = optimize(cos, 0, 2pi, Brent());
-    @assert norm(Optim.minimizer(results) - pi) < 0.01
+    @test norm(Optim.minimizer(results) - pi) < 0.01
     results = optimize(cos, 0.0, 2pi, Brent());
-    @assert norm(Optim.minimizer(results) - pi) < 0.01
+    @test norm(Optim.minimizer(results) - pi) < 0.01
     results = optimize(cos, 0, 2pi, method = Brent());
-    @assert norm(Optim.minimizer(results) - pi) < 0.01
+    @test norm(Optim.minimizer(results) - pi) < 0.01
     results = optimize(cos, 0.0, 2pi, method = Brent());
-    @assert norm(Optim.minimizer(results) - pi) < 0.01
+    @test norm(Optim.minimizer(results) - pi) < 0.01
 end

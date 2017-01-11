@@ -4,6 +4,7 @@
 immutable BFGS <: Optimizer
     linesearch!
     initial_invH
+    resetalpha
 end
 #= uncomment for v0.8.0
 BFGS(; linesearch = LineSearches.hagerzhang!, initial_invH = x -> eye(eltype(x), length(x))) =
@@ -11,9 +12,10 @@ BFGS(; linesearch = LineSearches.hagerzhang!, initial_invH = x -> eye(eltype(x),
 =#
 function BFGS(; linesearch! = nothing,
                 linesearch = LineSearches.hagerzhang!,
-                initial_invH = x -> eye(eltype(x), length(x)))
+              initial_invH = x -> eye(eltype(x), length(x)),
+              resetalpha = true)
     linesearch = get_linesearch(linesearch!, linesearch)
-    BFGS(linesearch, initial_invH)
+    BFGS(linesearch, initial_invH, resetalpha)
 end
 
 type BFGSState{T}
@@ -72,8 +74,11 @@ function update_state!{T}(d, state::BFGSState{T}, method::BFGS)
     push!(state.lsr, zero(T), d.f_x, dphi0)
 
     # Determine the distance of movement along the search line
+    if method.resetalpha == true
+        state.alpha = one(T)
+    end
     lssuccess = do_linesearch(state, method, d)
-
+    
     # Maintain a record of previous position
     copy!(state.x_previous, state.x)
 

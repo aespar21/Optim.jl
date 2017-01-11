@@ -1,14 +1,17 @@
 immutable Newton <: Optimizer
     linesearch!::Function
+    resetalpha::Bool
 end
 #= uncomment v0.8.0
 Newton(; linesearch::Function = LineSearches.hagerzhang!) =
-  Newton(linesearch)
+Newton(linesearch)
 =#
-function Newton(; linesearch! = nothing, linesearch::Function = LineSearches.hagerzhang!)
+function Newton(; linesearch! = nothing, linesearch::Function = LineSearches.hagerzhang!,
+                resetalpha = true)
     linesearch = get_linesearch(linesearch!, linesearch)
-    Newton(linesearch)
+    Newton(linesearch,resetalpha)
 end
+
 type NewtonState{T}
     @add_generic_fields()
     x_previous::Array{T}
@@ -41,6 +44,7 @@ function initial_state{T}(method::Newton, options, d, initial_x::Array{T})
 end
 
 function update_state!{T}(d, state::NewtonState{T}, method::Newton)
+    lssuccess = true
     # Search direction is always the negative gradient divided by
     # a matrix encoding the absolute values of the curvatures
     # represented by H. It deviates from the usual "add a scaled

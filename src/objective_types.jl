@@ -71,9 +71,9 @@ function TwiceDifferentiable{T}(f::Function, x_seed::Array{T}; method = :finited
     f_calls = [0]
     g_calls = [0]
     h_calls = [0]
-    if method = :finitediff
+    if method == :finitediff
         function g!(x::Vector, storage::Vector)
-            Calculus.finite_difference!(x->(f_calls[1]+=1;f(x)), x, storage, method.method)
+            Calculus.finite_difference!(x->(f_calls[1]+=1;f(x)), x, storage, :central)
             return
         end
         function fg!(x::Vector, storage::Vector)
@@ -101,11 +101,50 @@ function TwiceDifferentiable{T}(f::Function, x_seed::Array{T}; method = :finited
                                        similar(x_seed), Array{T}(n_x, n_x), f_calls, g_calls, h_calls)
 end
 
-function TwiceDifferentiable(d::Differentiable)
-    hcfg = ForwardDiff.HessianConfig(initial_x)
-    h! = (x, out) -> ForwardDiff.hessian!(out, d.f, x, hcfg)
-    TwiceDifferentiable#FIXME
+
+function TwiceDifferentiable{T}(f, g!, x_seed::Array{T}; method = :finitediff)
+    n_x = length(x_seed)
+    f_calls = [0]
+    function fg!(x::Vector, storage::Vector)
+        g!(x, storage)
+        return f(x)
+    end
+    if method == :finitediff
+        function h!(x::Vector, storage::Matrix)
+            Calculus.finite_difference_hessian!(x->(f_calls[1]+=1;f(x)), x, storage)
+            return
+        end
+    elseif method == :forwarddiff
+        hcfg = ForwardDiff.HessianConfig(similar(x_seed))
+        h! = (x, out) -> ForwardDiff.hessian!(out, f, x, hcfg)
+    end
+    return TwiceDifferentiable(f, g!, fg!, h!, zero(T),
+                                       similar(x_seed), Array{T}(n_x, n_x), f_calls, [0], [0])
 end
+
+function TwiceDifferentiable{T}(f, g!, fg!, x_seed::Array{T}; method = :finitediff)
+    n_x = length(x_seed)
+    f_calls = [0]
+    if method == :finitediff
+        function h!(x::Vector, storage::Matrix)
+            Calculus.finite_difference_hessian!(x->(f_calls[1]+=1;f(x)), x, storage)
+            return
+        end
+    elseif method == :forwarddiff
+        hcfg = ForwardDiff.HessianConfig(similar(grad(d)))
+        h! = (x, out) -> ForwardDiff.hessian!(out, f, x, hcfg)
+    end
+    return TwiceDifferentiable(f, g!, fg!, h!, zero(T),
+                                       similar(x_seed), Array{T}(n_x, n_x), f_calls, [0], [0])
+end
+
+TwiceDifferentiable(d::Differentiable;
+                    method = :finitediff) = TwiceDifferentiable(d.f,
+                                                                d.g!,
+                                                                d.fg!,
+                                                                similar(grad(d));
+                                                                method = method)
+
 
 function TwiceDifferentiable{T}(f::Function,
                                      g!::Function,

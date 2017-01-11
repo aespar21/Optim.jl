@@ -1,11 +1,11 @@
 using Compat
 import Compat.String
 
-@testset "*Differentiable constructors"
+@testset "*Differentiable constructors" begin
 
 end
 
-let
+@testset "Types" begin
     solver = NelderMead()
     T = typeof(solver)
     trace = OptimizationTrace{T}()

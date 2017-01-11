@@ -1,4 +1,4 @@
-let
+@testset "Type Stability" begin
     function rosenbrock{T}(x::Vector{T})
         o = one(T)
         c = convert(T,100)
@@ -22,23 +22,24 @@ let
         storage[2, 2] = 2*c
     end
 
-    for method in (NelderMead(), SimulatedAnnealing())
-        optimize(rosenbrock, [0.0,0,.0], method)
-        optimize(rosenbrock, Float32[0.0, 0.0], method)
-    end
 
-    for method in (BFGS(),
+
+    for method in (NelderMead(),
+                   SimulatedAnnealing(),
+                   BFGS(),
                    ConjugateGradient(),
                    GradientDescent(),
                    MomentumGradientDescent(),
                    AcceleratedGradientDescent(),
-                   LBFGS())
-        optimize(rosenbrock, rosenbrock_gradient!, [0.0,0,.0], method)
-        optimize(rosenbrock, rosenbrock_gradient!, Float32[0.0, 0.0], method)
-    end
-
-    for method in (Newton(),)# NewtonTrustRegion())
-        optimize(rosenbrock, rosenbrock_gradient!, rosenbrock_hessian!, [0.0,0.0], method)
-        optimize(rosenbrock, rosenbrock_gradient!, rosenbrock_hessian!, Float32[0.0, 0.0], method)
+                   LBFGS(),
+                   Newton())
+        for T in (Float32, Float64)
+            d = TwiceDifferentiable(rosenbrock,
+                                             rosenbrock_gradient!,
+                                             rosenbrock_hessian!,
+                                             rand(T, 2))
+            result = optimize(d, fill(zero(T), 2), method)
+            @test eltype(Optim.minimizer(result)) == T
+        end
     end
 end
