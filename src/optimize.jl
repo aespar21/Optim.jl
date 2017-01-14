@@ -124,7 +124,8 @@ update_g!(d, state, method) = nothing
 
 function update_g!{M<:Union{FirstOrderSolver, Newton}}(d, state, method::M)
     # Update the function value and gradient
-    state.f_x_previous, d.f_x = d.f_x, value_grad!(d,state.x)
+    state.f_x_previous = d.f_x
+    value_grad!(d,state.x)
 end
 
 update_h!(d, state, method) = nothing

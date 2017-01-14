@@ -1,9 +1,10 @@
 type NonDifferentiable
     f
     f_x
+    last_x
     f_calls
 end
-NonDifferentiable{T}(f, x_seed::Array{T}) = NonDifferentiable(f, zero(T), [0])
+NonDifferentiable{T}(f, x_seed::Array{T}) = NonDifferentiable(f, f(x_seed), copy(x_seed), [1])
 
 type Differentiable
     f
@@ -11,14 +12,19 @@ type Differentiable
     fg!
     f_x
     g_x
+    last_x
     f_calls
     g_calls
 end
-Differentiable{T}(f, g!, fg!, x_seed::Array{T}) = Differentiable(f, g!, fg!, zero(T), similar(x_seed), [0], [0])
+function Differentiable{T}(f, g!, fg!, x_seed::Array{T})
+    g_x = similar(x_seed)
+    g!(x_seed, g_x)
+    Differentiable(f, g!, fg!, f(x_seed), g_x, copy(x_seed), [1], [1])
+end
 function Differentiable{T}(f::Function, x_seed::Array{T}; method = :finitediff)
     n_x = length(x_seed)
-    f_calls = [0]
-    g_calls = [0]
+    f_calls = [1]
+    g_calls = [1]
     if method == :finitediff
         function g!(x::Array, storage::Array)
             Calculus.finite_difference!(x->(f_calls[1]+=1;f(x)), x, storage, :central)
@@ -38,7 +44,9 @@ function Differentiable{T}(f::Function, x_seed::Array{T}; method = :finitediff)
             DiffBase.value(gr_res)
         end
     end
-    return Differentiable(f, g!, fg!, zero(T), similar(x_seed), f_calls, g_calls)
+    g_x = similar(x_seed)
+    g!(x_seed, g_x)
+    return Differentiable(f, g!, fg!, f(x_seed), g_x, copy(x_seed), f_calls, g_calls)
 end
 
 function Differentiable{T}(f::Function, g!::Function, x_seed::Array{T})
@@ -46,7 +54,9 @@ function Differentiable{T}(f::Function, g!::Function, x_seed::Array{T})
         g!(x, storage)
         return f(x)
     end
-    return Differentiable(f, g!, fg!, zero(T), similar(x_seed), [0], [0])
+    g_x = similar(x_seed)
+    g!(x_seed, g_x)
+    return Differentiable(f, g!, fg!, f(x_seed), g_x, copy(x_seed), [1], [1])
 end
 
 type TwiceDifferentiable
@@ -57,19 +67,22 @@ type TwiceDifferentiable
     f_x
     g_x
     h_storage
+    last_x
     f_calls
     g_calls
     h_calls
 end
 function TwiceDifferentiable{T}(f, g!, fg!, h!, x_seed::Array{T})
     n_x = length(x_seed)
-    TwiceDifferentiable(f, g!, fg!, h!, zero(T),
-                                similar(x_seed), Array{T}(n_x, n_x), [0], [0], [0])
+    g_x = similar(x_seed)
+    g!(x_seed, g_x)
+    TwiceDifferentiable(f, g!, fg!, h!, f(x_seed),
+                                g_x, Array{T}(n_x, n_x), copy(x_seed), [1], [1], [0])
 end
 function TwiceDifferentiable{T}(f::Function, x_seed::Array{T}; method = :finitediff)
     n_x = length(x_seed)
-    f_calls = [0]
-    g_calls = [0]
+    f_calls = [1]
+    g_calls = [1]
     h_calls = [0]
     if method == :finitediff
         function g!(x::Vector, storage::Vector)
@@ -97,14 +110,16 @@ function TwiceDifferentiable{T}(f::Function, x_seed::Array{T}; method = :finited
         hcfg = ForwardDiff.HessianConfig(initial_x)
         h! = (x, out) -> ForwardDiff.hessian!(out, f, x, hcfg)
     end
-    return TwiceDifferentiable(f, g!, fg!, h!, zero(T),
-                                       similar(x_seed), Array{T}(n_x, n_x), f_calls, g_calls, h_calls)
+    g_x = similar(x_seed)
+    g!(x_seed, g_x)
+    return TwiceDifferentiable(f, g!, fg!, h!, f(x_seed),
+                                       g_x, Array{T}(n_x, n_x), copy(x_seed), f_calls, g_calls, h_calls)
 end
 
 
 function TwiceDifferentiable{T}(f, g!, x_seed::Array{T}; method = :finitediff)
     n_x = length(x_seed)
-    f_calls = [0]
+    f_calls = [1]
     function fg!(x::Vector, storage::Vector)
         g!(x, storage)
         return f(x)
@@ -118,13 +133,15 @@ function TwiceDifferentiable{T}(f, g!, x_seed::Array{T}; method = :finitediff)
         hcfg = ForwardDiff.HessianConfig(similar(x_seed))
         h! = (x, out) -> ForwardDiff.hessian!(out, f, x, hcfg)
     end
-    return TwiceDifferentiable(f, g!, fg!, h!, zero(T),
-                                       similar(x_seed), Array{T}(n_x, n_x), f_calls, [0], [0])
+    g_x = similar(x_seed)
+    g!(x_seed, g_x)
+    return TwiceDifferentiable(f, g!, fg!, h!, f(x_seed),
+                                       g_x, Array{T}(n_x, n_x), copy(x_seed), f_calls, [1], [0])
 end
 
 function TwiceDifferentiable{T}(f, g!, fg!, x_seed::Array{T}; method = :finitediff)
     n_x = length(x_seed)
-    f_calls = [0]
+    f_calls = [1]
     if method == :finitediff
         function h!(x::Vector, storage::Matrix)
             Calculus.finite_difference_hessian!(x->(f_calls[1]+=1;f(x)), x, storage)
@@ -134,15 +151,17 @@ function TwiceDifferentiable{T}(f, g!, fg!, x_seed::Array{T}; method = :finitedi
         hcfg = ForwardDiff.HessianConfig(similar(grad(d)))
         h! = (x, out) -> ForwardDiff.hessian!(out, f, x, hcfg)
     end
-    return TwiceDifferentiable(f, g!, fg!, h!, zero(T),
-                                       similar(x_seed), Array{T}(n_x, n_x), f_calls, [0], [0])
+    g_x = similar(x_seed)
+    g!(x_seed, g_x)
+    return TwiceDifferentiable(f, g!, fg!, h!, f(x_seed),
+                                       g_x, Array{T}(n_x, n_x), copy(x_seed), f_calls, [1], [0])
 end
 
 TwiceDifferentiable(d::Differentiable;
                     method = :finitediff) = TwiceDifferentiable(d.f,
                                                                 d.g!,
                                                                 d.fg!,
-                                                                similar(grad(d));
+                                                                d.last_x;
                                                                 method = method)
 
 
@@ -155,24 +174,38 @@ function TwiceDifferentiable{T}(f::Function,
         g!(x, storage)
         return f(x)
     end
-    return TwiceDifferentiable(f, g!, fg!, h!, zero(T),
-                                       similar(x_seed), Array{T}(n_x, n_x), [0], [0], [0])
+    g_x = similar(x_seed)
+    g!(x_seed, g_x)
+    return TwiceDifferentiable(f, g!, fg!, h!, f(x_seed),
+                                       g_x, Array{T}(n_x, n_x), copy(x_seed), [1], [1], [0])
 end
 
 function value(obj, x)
-    obj.f_calls .+= 1
-    obj.f(x)
+    if x != obj.last_x
+        obj.f_calls .+= 1
+        return obj.f(x)
+    else
+        return obj.f_x
+    end
 end
 
 function value!(obj, x)
-    obj.f_calls .+= 1
-    obj.f(x)
+    if x != obj.last_x
+        obj.f_calls .+= 1
+        copy!(obj.last_x, x)
+        obj.f_x = obj.f(x)
+    end
+    obj.f_x
 end
 
 function value_grad!(obj, x)
-    obj.f_calls .+= 1
-    obj.g_calls .+= 1
-    obj.f_x = obj.fg!(x, obj.g_x)
+    if x != obj.last_x
+        obj.f_calls .+= 1
+        obj.g_calls .+= 1
+        copy!(obj.last_x, x)
+        obj.f_x = obj.fg!(x, obj.g_x)
+    end
+    obj.f_x
 end
 
 #get_grad(obj) ?
