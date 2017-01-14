@@ -164,6 +164,11 @@ function value(obj, x)
     obj.f(x)
 end
 
+function value!(obj, x)
+    obj.f_calls .+= 1
+    obj.f(x)
+end
+
 function value_grad!(obj, x)
     obj.f_calls .+= 1
     obj.g_calls .+= 1

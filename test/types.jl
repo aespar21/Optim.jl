@@ -39,8 +39,9 @@ end
             @test startswith(lines[8], "   * |x - x'| < ")
             @test startswith(lines[9], "   * |f(x) - f(x')| / |f(x)| < ")
             @test startswith(lines[10], "   * |g(x)| < ")
-            @test startswith(lines[11], "   * Reached Maximum Number of Iterations: ")
-            @test startswith(lines[12], " * Objective Function Calls: ")
+            @test startswith(lines[11], "   * f(x) > f(x')")
+            @test startswith(lines[12], "   * Reached Maximum Number of Iterations: ")
+            @test startswith(lines[13], " * Objective Function Calls: ")
         end
     end
 
@@ -61,7 +62,8 @@ end
     @test startswith(lines[8], "   * |x - x'| < ")
     @test startswith(lines[9], "   * |f(x) - f(x')| / |f(x)| < ")
     @test startswith(lines[10], "   * |g(x)| < ")
-    @test startswith(lines[11], "   * Reached Maximum Number of Iterations: ")
-    @test startswith(lines[12], " * Objective Function Calls: ")
-    @test startswith(lines[13], " * Gradient Calls: ")
+    @test startswith(lines[11], "   * f(x) > f(x')")
+    @test startswith(lines[12], "   * Reached Maximum Number of Iterations: ")
+    @test startswith(lines[13], " * Objective Function Calls: ")
+    @test startswith(lines[14], " * Gradient Calls: ")
 end
