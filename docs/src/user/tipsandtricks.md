@@ -82,7 +82,7 @@ initial_x = ...
 buffer = Array(...) # Preallocate an appropriate buffer
 last_x = similar(initial_x)
 df = TwiceDifferentiable(x -> f(x, buffer, initial_x),
-                                (x, stor) -> g!(x, stor, buffer, last_x))
+                                (x, stor) -> g!(x, stor, buffer, last_x), initial_x)
 optimize(df, initial_x)
 ```
 ## Provide gradients

@@ -21,7 +21,7 @@ function Differentiable{T}(f, g!, fg!, x_seed::Array{T})
     g!(x_seed, g_x)
     Differentiable(f, g!, fg!, f(x_seed), g_x, copy(x_seed), [1], [1])
 end
-function Differentiable{T}(f::Function, x_seed::Array{T}; method = :finitediff)
+function Differentiable{T}(f, x_seed::Array{T}; method = :finitediff)
     n_x = length(x_seed)
     f_calls = [1]
     g_calls = [1]
@@ -49,7 +49,7 @@ function Differentiable{T}(f::Function, x_seed::Array{T}; method = :finitediff)
     return Differentiable(f, g!, fg!, f(x_seed), g_x, copy(x_seed), f_calls, g_calls)
 end
 
-function Differentiable{T}(f::Function, g!::Function, x_seed::Array{T})
+function Differentiable{T}(f, g!, x_seed::Array{T})
     function fg!(x::Array, storage::Array)
         g!(x, storage)
         return f(x)
@@ -79,7 +79,7 @@ function TwiceDifferentiable{T}(f, g!, fg!, h!, x_seed::Array{T})
     TwiceDifferentiable(f, g!, fg!, h!, f(x_seed),
                                 g_x, Array{T}(n_x, n_x), copy(x_seed), [1], [1], [0])
 end
-function TwiceDifferentiable{T}(f::Function, x_seed::Array{T}; method = :finitediff)
+function TwiceDifferentiable{T}(f, x_seed::Array{T}; method = :finitediff)
     n_x = length(x_seed)
     f_calls = [1]
     g_calls = [1]
@@ -138,7 +138,7 @@ function TwiceDifferentiable{T}(f, g!, x_seed::Array{T}; method = :finitediff)
     return TwiceDifferentiable(f, g!, fg!, h!, f(x_seed),
                                        g_x, Array{T}(n_x, n_x), copy(x_seed), f_calls, [1], [0])
 end
-
+#=
 function TwiceDifferentiable{T}(f, g!, fg!, x_seed::Array{T}; method = :finitediff)
     n_x = length(x_seed)
     f_calls = [1]
@@ -156,18 +156,26 @@ function TwiceDifferentiable{T}(f, g!, fg!, x_seed::Array{T}; method = :finitedi
     return TwiceDifferentiable(f, g!, fg!, h!, f(x_seed),
                                        g_x, Array{T}(n_x, n_x), copy(x_seed), f_calls, [1], [0])
 end
+=#
+function TwiceDifferentiable(d::Differentiable; method = :finitediff)
+    n_x = length(d.last_x)
+    T = eltype(d.last_x)
+    if method == :finitediff
+        function h!(x::Vector, storage::Matrix)
+            Calculus.finite_difference_hessian!(x->(d.f_calls[1]+=1;d.f(x)), x, storage)
+            return
+        end
+    elseif method == :forwarddiff
+        hcfg = ForwardDiff.HessianConfig(similar(grad(d)))
+        h! = (x, out) -> ForwardDiff.hessian!(out, d.f, x, hcfg)
+    end
+    return TwiceDifferentiable(d.f, d.g!, d.fg!, h!, d.f_x,
+                                       d.g_x, Array{T}(n_x, n_x), d.last_x, d.f_calls, d.g_calls, [0])
+end
 
-TwiceDifferentiable(d::Differentiable;
-                    method = :finitediff) = TwiceDifferentiable(d.f,
-                                                                d.g!,
-                                                                d.fg!,
-                                                                d.last_x;
-                                                                method = method)
-
-
-function TwiceDifferentiable{T}(f::Function,
-                                     g!::Function,
-                                     h!::Function,
+function TwiceDifferentiable{T}(f,
+                                     g!,
+                                     h!,
                                      x_seed::Array{T})
     n_x = length(x_seed)
     function fg!(x::Vector, storage::Vector)
