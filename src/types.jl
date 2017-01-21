@@ -1,8 +1,11 @@
 abstract Optimizer
-immutable Options{TCallback <: Union{Void, Function}}
-    x_tol::Float64
-    f_tol::Float64
-    g_tol::Float64
+immutable Options{TCallback <: Union{Void, Function}, Ti<:Integer, Tf<:Real}
+    x_tol::Tf
+    f_tol::Tf
+    g_tol::Tf
+    f_limit::Ti
+    g_limit::Ti
+    h_limit::Ti
     allow_f_increases::Bool
     iterations::Int
     store_trace::Bool
@@ -18,6 +21,9 @@ function Options(;
         x_tol::Real = 1e-32,
         f_tol::Real = 1e-32,
         g_tol::Real = 1e-8,
+        f_limit = 0,
+        g_limit = 0,
+        h_limit = 0,
         allow_f_increases::Bool = false,
         iterations::Integer = 1_000,
         store_trace::Bool = false,
@@ -31,12 +37,24 @@ function Options(;
     if extended_trace && callback == nothing
         show_trace = true
     end
-    Options{typeof(callback)}(
-        Float64(x_tol), Float64(f_tol), Float64(g_tol), allow_f_increases, Int(iterations),
+    Options(
+        x_tol, f_tol, g_tol, f_limit, g_limit, h_limit, allow_f_increases, Int(iterations),
         store_trace, show_trace, extended_trace, autodiff, Int(show_every),
         callback, time_limit)
 end
 
+
+function Options(x_tol, f_tol, g_tol, allow_f_increases,
+    iterations, store_trace, show_trace, extended_trace, autodiff,
+    show_every, callback, time_limit)
+    if !has_deprecated_options![]
+        warn("Options have new fields, check the documentations.")
+        has_deprecated_options![] = true
+    end
+
+    Options(x_tol, f_tol, g_tol, 0, 0, 0, allow_f_increases,
+    Int(iterations), store_trace, show_trace, extended_trace, autodiff, Int(show_every), callback, time_limit)
+end
 function print_header(options::Options)
     if options.show_trace
         @printf "Iter     Function value   Gradient norm \n"
@@ -58,7 +76,7 @@ typealias OptimizationTrace{T} Vector{OptimizationState{T}}
 
 abstract OptimizationResults
 
-type MultivariateOptimizationResults{T,N,M} <: OptimizationResults
+type MultivariateOptimizationResults{T,N,M,Ti<:Integer} <: OptimizationResults
     method::String
     initial_x::Array{T,N}
     minimizer::Array{T,N}
@@ -73,9 +91,10 @@ type MultivariateOptimizationResults{T,N,M} <: OptimizationResults
     g_tol::Float64
     f_increased::Bool
     trace::OptimizationTrace{M}
-    f_calls
-    g_calls
-    h_calls
+    calls_exceeded::Tuple{Bool, Bool, Bool}
+    f_calls::Ti
+    g_calls::Ti
+    h_calls::Ti
 end
 
 type UnivariateOptimizationResults{T,M} <: OptimizationResults

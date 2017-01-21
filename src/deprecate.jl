@@ -1,3 +1,4 @@
+const has_deprecated_options = Ref(false)
 const has_deprecated_linesearch! = Ref(false)
 const has_deprecated_precondprep! = Ref(false)
 const has_deprecated_levenberg_marquardt = Ref(false)
@@ -10,7 +11,17 @@ const has_deprecated_levenberg_marquardt = Ref(false)
         initial_x, minimizer, minimum, iterations,
         iteration_converged, x_converged, x_tol,
         f_converged, f_tol, g_converged, g_tol, false,
-        trace, f_calls, g_calls, 0)
+        trace, (false, false, false), f_calls, g_calls, 0)
+
+@deprecate MultivariateOptimizationResults(method,
+    initial_x, minimizer, minimum, iterations,
+    iteration_converged, x_converged, x_tol,
+    f_converged, f_tol, g_converged::Bool, g_tol, f_increased::Bool,
+    trace::Array, f_calls::Integer, g_calls::Integer)  MultivariateOptimizationResults(method,
+        initial_x, minimizer, minimum, iterations,
+        iteration_converged, x_converged, x_tol,
+        f_converged, f_tol, g_converged, g_tol, false,
+        trace, (false, false, false), f_calls, g_calls, 0)
 
 @deprecate MultivariateOptimizationResults(method,
     initial_x, minimizer, minimum, iterations,
@@ -20,7 +31,7 @@ const has_deprecated_levenberg_marquardt = Ref(false)
         initial_x, minimizer, minimum, iterations,
         iteration_converged, x_converged, x_tol,
         f_converged, f_tol, g_converged, g_tol, false,
-        trace, f_calls, g_calls, h_calls)
+        trace, (false, false, false), f_calls, g_calls, h_calls)
 
 # LineSearches deprecation
 for name in names(LineSearches)
@@ -39,6 +50,7 @@ end
 @deprecate interpbacktracking_linesearch! LineSearches.interpbacktracking!
 
 @deprecate OptimizationOptions(args...; kwargs...) Optim.Options(args...; kwargs...)
+
 
 function get_linesearch(linesearch!, linesearch)
     if linesearch! != nothing

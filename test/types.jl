@@ -1,10 +1,6 @@
 using Compat
 import Compat.String
 
-@testset "*Differentiable constructors" begin
-
-end
-
 @testset "Types" begin
     solver = NelderMead()
     T = typeof(solver)

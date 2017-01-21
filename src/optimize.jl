@@ -167,6 +167,7 @@ function optimize{T, M<:Optimizer}(d, initial_x::Array{T}, method::M, options::O
     stopped, stopped_by_callback, stopped_by_time_limit = false, false, false
 
     x_converged, f_converged, f_increased = false, false, false
+    calls_exceeded = (false, false, false)
     g_converged = if typeof(method) <: NelderMead
         nmobjective(state.f_simplex, state.m, state.n) < options.g_tol
     elseif  typeof(method) <: ParticleSwarm || typeof(method) <: SimulatedAnnealing
@@ -181,7 +182,7 @@ function optimize{T, M<:Optimizer}(d, initial_x::Array{T}, method::M, options::O
     options.show_trace && print_header(method)
     trace!(tr, d, state, iteration, method, options)
 
-    while !converged && !stopped && iteration < options.iterations
+    while !converged && !stopped && iteration < options.iterations && !any(calls_exceeded)
         iteration += 1
 
         update_state!(d, state, method) && break # it returns true if it's forced by something in update! to stop (eg dx_dg == 0.0 in BFGS)
@@ -207,6 +208,9 @@ function optimize{T, M<:Optimizer}(d, initial_x::Array{T}, method::M, options::O
         # and stop the while loop
         stopped = stopped_by_callback || stopped_by_time_limit ? true : false
 
+        calls_exceeded = (0 < options.f_limit && f_calls(d) <= options.f_limit,
+                          0 < options.g_limit && g_calls(d) <= options.g_limit,
+                          0 < options.h_limit && h_calls(d) <= options.h_limit)
         # Did the iteration provide a non-decreasing step?
         f_increased && !options.allow_f_increases && break
 
@@ -227,6 +231,7 @@ function optimize{T, M<:Optimizer}(d, initial_x::Array{T}, method::M, options::O
                                             options.g_tol,
                                             f_increased,
                                             tr,
+                                            calls_exceeded,
                                             f_calls(d),
                                             g_calls(d),
                                             h_calls(d))
