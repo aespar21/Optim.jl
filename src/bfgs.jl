@@ -78,7 +78,7 @@ function update_state!{T}(d, state::BFGSState{T}, method::BFGS)
         state.alpha = one(T)
     end
     lssuccess = do_linesearch(state, method, d)
-    
+
     # Maintain a record of previous position
     copy!(state.x_previous, state.x)
 

@@ -29,7 +29,7 @@ function initial_state{T}(method::Newton, options, d, initial_x::Array{T})
     s = similar(initial_x)
     x_ls, g_ls = similar(initial_x), similar(initial_x)
     f_x_previous, d.f_x = NaN, value_grad!(d, initial_x)
-    H = Array(T, n, n)
+    H = Array{T}(n, n)
     d.h!(initial_x, H)
     NewtonState("Newton's Method",
               length(initial_x),

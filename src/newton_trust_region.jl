@@ -240,7 +240,7 @@ function initial_state{T}(method::NewtonTrustRegion, options, d, initial_x::Arra
     f_x_previous, d.f_x = NaN, value_grad!(d, initial_x)
     stor = similar(initial_x)
     d.g!(initial_x, stor)
-    H = Array(T, n, n)
+    H = Array{T}(n, n)
     d.h!(initial_x, H)
 
     NewtonTrustRegionState("Newton's Method (Trust Region)", # Store string with model name in state.method
