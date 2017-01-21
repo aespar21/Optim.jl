@@ -133,7 +133,7 @@ end
 
 function update_state!{T}(d, state::ConjugateGradientState{T}, method::ConjugateGradient)
         # Reset the search direction if it becomes corrupted
-        dphi0 = vecdot(d.g_x, state.s)
+        dphi0 = vecdot(grad(d), state.s)
         if dphi0 >= 0
             @simd for i in 1:state.n
                 @inbounds state.s[i] = -state.pg[i]
@@ -188,11 +188,11 @@ function update_state!{T}(d, state::ConjugateGradientState{T}, method::Conjugate
         dPd = dot(state.s, method.P, state.s)
         etak::T = method.eta * vecdot(state.s, state.g_previous) / dPd
         @simd for i in 1:state.n
-            @inbounds state.y[i] = d.g_x[i] - state.g_previous[i]
+            @inbounds state.y[i] = grad(d, i) - state.g_previous[i]
         end
         ydots = vecdot(state.y, state.s)
         copy!(state.py, state.pg)        # below, store pg - pg_previous in py
-        A_ldiv_B!(state.pg, method.P, d.g_x)
+        A_ldiv_B!(state.pg, method.P, grad(d))
         @simd for i in 1:state.n     # py = pg - py
            @inbounds state.py[i] = state.pg[i] - state.py[i]
         end

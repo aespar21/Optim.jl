@@ -170,7 +170,7 @@ function TwiceDifferentiable(d::Differentiable; method = :finitediff)
         h! = (x, out) -> ForwardDiff.hessian!(out, d.f, x, hcfg)
     end
     return TwiceDifferentiable(d.f, d.g!, d.fg!, h!, d.f_x,
-                                       d.g_x, Array{T}(n_x, n_x), d.last_x, d.f_calls, d.g_calls, [0])
+                                       grad(d), Array{T}(n_x, n_x), d.last_x, d.f_calls, d.g_calls, [0])
 end
 
 function TwiceDifferentiable{T}(f,

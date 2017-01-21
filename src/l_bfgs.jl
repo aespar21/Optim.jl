@@ -149,7 +149,7 @@ function update_state!{T}(d, state::LBFGSState{T}, method::LBFGS)
     if dphi0 > 0.0
         state.pseudo_iteration = 1
         @simd for i in 1:n
-            @inbounds state.s[i] = -d.g_x[i]
+            @inbounds state.s[i] = -grad(d, i)
         end
         dphi0 = vecdot(grad(g), state.s)
     end

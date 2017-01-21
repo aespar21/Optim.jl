@@ -84,7 +84,7 @@ function assess_convergence(d, state::NewtonTrustRegionState, options::Options)
                                        state.x_previous,
                                        d.f_x,
                                        state.f_x_previous,
-                                       d.g_x,
+                                       grad(d),
                                        options.x_tol,
                                        options.f_tol,
                                        options.g_tol)

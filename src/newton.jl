@@ -51,10 +51,10 @@ function update_state!{T}(d, state::NewtonState{T}, method::Newton)
     # identity matrix" version of the modified Newton method. More
     # information can be found in the discussion at issue #153.
     state.F, state.Hd = ldltfact!(Positive, state.H)
-    state.s[:] = -(state.F\d.g_x)
+    state.s[:] = -(state.F\grad(d))
 
     # Refresh the line search cache
-    dphi0 = vecdot(d.g_x, state.s)
+    dphi0 = vecdot(grad(d), state.s)
     LineSearches.clear!(state.lsr)
     push!(state.lsr, zero(T), d.f_x, dphi0)
 

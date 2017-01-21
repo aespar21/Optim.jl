@@ -247,7 +247,7 @@ function initial_state{T}(method::NewtonTrustRegion, options, d, initial_x::Arra
                          length(initial_x),
                          copy(initial_x), # Maintain current state in state.x
                          copy(initial_x), # Maintain current state in state.x_previous
-                         copy(d.g_x), # Store previous gradient in state.g_previous
+                         copy(grad(d)), # Store previous gradient in state.g_previous
                          T(NaN), # Store previous f in state.f_x_previous
                          similar(initial_x), # Maintain current search direction in state.s
                          H,
@@ -266,7 +266,7 @@ function update_state!{T}(d, state::NewtonTrustRegionState{T}, method::NewtonTru
 
     # Find the next step direction.
     m, state.interior, state.lambda, state.hard_case, state.reached_subproblem_solution =
-        solve_tr_subproblem!(d.g_x, state.H, state.delta, state.s)
+        solve_tr_subproblem!(grad(d), state.H, state.delta, state.s)
 
     # Maintain a record of previous position
     copy!(state.x_previous, state.x)
@@ -277,7 +277,7 @@ function update_state!{T}(d, state::NewtonTrustRegionState{T}, method::NewtonTru
     end
 
     # Update the function value and gradient
-    copy!(state.g_previous, d.g_x)
+    copy!(state.g_previous, grad(d))
     state.f_x_previous, d.f_x = d.f_x, value_grad!(d, state.x)
 
     # Update the trust region size based on the discrepancy between
@@ -316,7 +316,7 @@ function update_state!{T}(d, state::NewtonTrustRegionState{T}, method::NewtonTru
 
         d.f_x = state.f_x_previous
         copy!(state.x, state.x_previous)
-        copy!(d.g_x, state.g_previous)
+        copy!(grad(d), state.g_previous)
     end
 
     false
