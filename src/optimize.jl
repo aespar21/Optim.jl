@@ -132,7 +132,7 @@ update_h!(d, state, method) = nothing
 
 # Update the Hessian
 function update_h!(d, state, method::SecondOrderSolver)
-    d.h!(state.x, state.H)
+    hessian!(d, state.x)
 end
 
 function clear_object!(d::NonDifferentiable)

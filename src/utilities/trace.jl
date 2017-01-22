@@ -76,7 +76,7 @@ function trace!(tr, d, state, iteration, method::Newton, options)
     if options.extended_trace
         dt["x"] = copy(state.x)
         dt["g(x)"] = copy(grad(d))
-        dt["h(x)"] = copy(state.H)
+        dt["h(x)"] = copy(d.H_x)
     end
     g_norm = vecnorm(grad(d), Inf)
     update!(tr,
@@ -95,7 +95,7 @@ function trace!(tr, d, state, iteration, method::NewtonTrustRegion, options)
     if options.extended_trace
         dt["x"] = copy(state.x)
         dt["g(x)"] = copy(grad(d))
-        dt["h(x)"] = copy(state.H)
+        dt["h(x)"] = copy(d.H_x)
         dt["delta"] = copy(state.delta)
         dt["interior"] = state.interior
         dt["hard case"] = state.hard_case

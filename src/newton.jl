@@ -16,7 +16,6 @@ type NewtonState{T}
     @add_generic_fields()
     x_previous::Array{T}
     f_x_previous::T
-    H
     F
     Hd
     s::Array{T}
@@ -29,16 +28,14 @@ function initial_state{T}(method::Newton, options, d, initial_x::Array{T})
     s = similar(initial_x)
     x_ls, g_ls = similar(initial_x), similar(initial_x)
     f_x_previous, d.f_x = NaN, value_grad!(d, initial_x)
-    H = Array{T}(n, n)
-    d.h!(initial_x, H)
+    hessian!(d, initial_x)
     NewtonState("Newton's Method",
               length(initial_x),
               copy(initial_x), # Maintain current state in state.x
               copy(initial_x), # Maintain current state in state.x_previous
               T(NaN), # Store previous f in state.f_x_previous
-              H,
-              copy(H),
-              copy(H),
+              copy(hessian(d)),
+              copy(hessian(d)),
               similar(initial_x), # Maintain current search direction in state.s
               @initial_linesearch()...) # Maintain a cache for line search results in state.lsr
 end
@@ -50,7 +47,7 @@ function update_state!{T}(d, state::NewtonState{T}, method::Newton)
     # represented by H. It deviates from the usual "add a scaled
     # identity matrix" version of the modified Newton method. More
     # information can be found in the discussion at issue #153.
-    state.F, state.Hd = ldltfact!(Positive, state.H)
+    state.F, state.Hd = ldltfact!(Positive, hessian(d))
     state.s[:] = -(state.F\grad(d))
 
     # Refresh the line search cache

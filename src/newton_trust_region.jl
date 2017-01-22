@@ -210,7 +210,6 @@ type NewtonTrustRegionState{T}
     g_previous::Array{T}
     f_x_previous::T
     s::Array{T}
-    H
     hard_case
     reached_subproblem_solution
     interior
@@ -222,7 +221,7 @@ type NewtonTrustRegionState{T}
 end
 
 function initial_state{T}(method::NewtonTrustRegion, options, d, initial_x::Array{T})
-      n = length(initial_x)
+    n = length(initial_x)
     # Maintain current gradient in gr
     @assert(method.delta_hat > 0, "delta_hat must be strictly positive")
     @assert(0 < method.initial_delta < method.delta_hat, "delta must be in (0, delta_hat)")
@@ -238,10 +237,7 @@ function initial_state{T}(method::NewtonTrustRegion, options, d, initial_x::Arra
     interior = true
     lambda = NaN
     f_x_previous, d.f_x = NaN, value_grad!(d, initial_x)
-    stor = similar(initial_x)
-    d.g!(initial_x, stor)
-    H = Array{T}(n, n)
-    d.h!(initial_x, H)
+    hessian!(d, initial_x)
 
     NewtonTrustRegionState("Newton's Method (Trust Region)", # Store string with model name in state.method
                          length(initial_x),
@@ -250,7 +246,6 @@ function initial_state{T}(method::NewtonTrustRegion, options, d, initial_x::Arra
                          copy(grad(d)), # Store previous gradient in state.g_previous
                          T(NaN), # Store previous f in state.f_x_previous
                          similar(initial_x), # Maintain current search direction in state.s
-                         H,
                          hard_case,
                          reached_subproblem_solution,
                          interior,
@@ -266,7 +261,7 @@ function update_state!{T}(d, state::NewtonTrustRegionState{T}, method::NewtonTru
 
     # Find the next step direction.
     m, state.interior, state.lambda, state.hard_case, state.reached_subproblem_solution =
-        solve_tr_subproblem!(grad(d), state.H, state.delta, state.s)
+        solve_tr_subproblem!(grad(d), hessian(d), state.delta, state.s)
 
     # Maintain a record of previous position
     copy!(state.x_previous, state.x)
