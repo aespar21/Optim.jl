@@ -24,7 +24,7 @@ end
 @def initial_linesearch begin
     (similar(initial_x), # Buffer of x for line search in state.x_ls
     similar(initial_x), # Buffer of g for line search in state.g_ls
-    LineSearches.alphainit(one(T), initial_x, grad(d), d.f_x), # Keep track of step size in state.alpha
+    LineSearches.alphainit(one(T), initial_x, grad(d), value(d)), # Keep track of step size in state.alpha
     false, # state.mayterminate
     LineSearches.LineSearchResults(T))
 end

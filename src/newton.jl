@@ -1,5 +1,5 @@
-immutable Newton <: Optimizer
-    linesearch!::Function
+immutable Newton{L<:Function} <: Optimizer
+    linesearch!::L
     resetalpha::Bool
 end
 #= uncomment v0.8.0
@@ -27,7 +27,8 @@ function initial_state{T}(method::Newton, options, d, initial_x::Array{T})
     # Maintain current gradient in gr
     s = similar(initial_x)
     x_ls, g_ls = similar(initial_x), similar(initial_x)
-    f_x_previous, d.f_x = NaN, value_grad!(d, initial_x)
+    f_x_previous = NaN
+    value_grad!(d, initial_x)
     hessian!(d, initial_x)
     NewtonState("Newton's Method",
               length(initial_x),
@@ -53,7 +54,7 @@ function update_state!{T}(d, state::NewtonState{T}, method::Newton)
     # Refresh the line search cache
     dphi0 = vecdot(grad(d), state.s)
     LineSearches.clear!(state.lsr)
-    push!(state.lsr, zero(T), d.f_x, dphi0)
+    push!(state.lsr, zero(T), value(d), dphi0)
 
     # Determine the distance of movement along the search line
     lssuccess = do_linesearch(state, method, d)

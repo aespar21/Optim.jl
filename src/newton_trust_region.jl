@@ -236,7 +236,8 @@ function initial_state{T}(method::NewtonTrustRegion, options, d, initial_x::Arra
     reached_subproblem_solution = true
     interior = true
     lambda = NaN
-    f_x_previous, d.f_x = NaN, value_grad!(d, initial_x)
+    f_x_previous = NaN
+    value_grad!(d, initial_x)
     hessian!(d, initial_x)
 
     NewtonTrustRegionState("Newton's Method (Trust Region)", # Store string with model name in state.method
@@ -267,17 +268,18 @@ function update_state!{T}(d, state::NewtonTrustRegionState{T}, method::NewtonTru
     copy!(state.x_previous, state.x)
 
     # Update current position
-    for i in 1:state.n
+    @simd for i in 1:state.n
         @inbounds state.x[i] = state.x[i] + state.s[i]
     end
 
     # Update the function value and gradient
     copy!(state.g_previous, grad(d))
-    state.f_x_previous, d.f_x = d.f_x, value_grad!(d, state.x)
+    state.f_x_previous = value(d)
+    value_grad!(d, state.x)
 
     # Update the trust region size based on the discrepancy between
     # the predicted and actual function values.  (Algorithm 4.1 in N&W)
-    f_x_diff = state.f_x_previous - d.f_x
+    f_x_diff = state.f_x_previous - value(d)
     if abs(m) <= eps(T)
         # This should only happen when the step is very small, in which case
         # we should accept the step and assess_convergence().

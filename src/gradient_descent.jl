@@ -48,7 +48,7 @@ function update_state!{T}(d, state::GradientDescentState{T}, method::GradientDes
     # Refresh the line search cache
     dphi0 = vecdot(grad(d), state.s)
     LineSearches.clear!(state.lsr)
-    push!(state.lsr, zero(T), d.f_x, dphi0)
+    push!(state.lsr, zero(T), value(d), dphi0)
 
     # Determine the distance of movement along the search line
     lssuccess = do_linesearch(state, method, d)

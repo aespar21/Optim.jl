@@ -23,7 +23,7 @@ function trace!(tr, d, state, iteration, method::Union{ParticleSwarm, SimulatedA
     g_norm = NaN
     update!(tr,
             state.iteration,
-            d.f_x,
+            value(d),
             g_norm,
             dt,
             options.store_trace,
@@ -43,7 +43,7 @@ function trace!(tr, d, state, iteration, method::BFGS, options)
     g_norm = vecnorm(grad(d), Inf)
     update!(tr,
     iteration,
-    d.f_x,
+    value(d),
     g_norm,
     dt,
     options.store_trace,
@@ -62,7 +62,7 @@ function trace!(tr, d, state, iteration, method::Union{LBFGS, AcceleratedGradien
     g_norm = vecnorm(grad(d), Inf)
     update!(tr,
             iteration,
-            d.f_x,
+            value(d),
             g_norm,
             dt,
             options.store_trace,
@@ -81,7 +81,7 @@ function trace!(tr, d, state, iteration, method::Newton, options)
     g_norm = vecnorm(grad(d), Inf)
     update!(tr,
             iteration,
-            d.f_x,
+            value(d),
             g_norm,
             dt,
             options.store_trace,
@@ -105,7 +105,7 @@ function trace!(tr, d, state, iteration, method::NewtonTrustRegion, options)
     g_norm = norm(grad(d), Inf)
     update!(tr,
             iteration,
-            d.f_x,
+            value(d),
             g_norm,
             dt,
             options.store_trace,

@@ -7,8 +7,8 @@
 # x_{t} = y_{t} + (t - 1.0) / (t + 2.0) * (y_{t} - y_{t - 1})
 
 
-immutable AcceleratedGradientDescent <: Optimizer
-    linesearch!
+immutable AcceleratedGradientDescent{L<:Function} <: Optimizer
+    linesearch!::L
 end
 
 #= uncomment for v0.8.0
@@ -56,7 +56,7 @@ function update_state!{T}(d, state::AcceleratedGradientDescentState{T}, method::
     # Refresh the line search cache
     dphi0 = vecdot(grad(d), state.s)
     LineSearches.clear!(state.lsr)
-    push!(state.lsr, zero(T), d.f_x, dphi0)
+    push!(state.lsr, zero(T), value(d), dphi0)
 
     # Determine the distance of movement along the search line
     lssuccess = do_linesearch(state, method, d)
@@ -75,9 +75,6 @@ function update_state!{T}(d, state::AcceleratedGradientDescentState{T}, method::
     @simd for i in 1:state.n
         @inbounds state.x[i] = state.y[i] + scaling * (state.y[i] - state.y_previous[i])
     end
-
-    # Update the function value and gradient
-    state.f_x_previous, df_x = d.f_x, value_grad!(d, state.x)
 
     (lssuccess == false) # break on linesearch error
 end

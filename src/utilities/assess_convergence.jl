@@ -43,7 +43,7 @@ function assess_convergence(d, state, options::Options)
     # Absolute Tolerance
     # if abs(f_x - f_x_previous) < f_tol
     # Relative Tolerance
-    if abs(d.f_x - state.f_x_previous) < max(options.f_tol * (abs(d.f_x) + options.f_tol), eps(abs(d.f_x)+abs(state.f_x_previous)))
+    if abs(value(d) - state.f_x_previous) < max(options.f_tol * (abs(value(d)) + options.f_tol), eps(abs(value(d))+abs(state.f_x_previous)))
         f_converged = true
     end
 
@@ -82,7 +82,7 @@ function assess_convergence(d, state::NewtonTrustRegionState, options::Options)
         converged,
         f_increased = assess_convergence(state.x,
                                        state.x_previous,
-                                       d.f_x,
+                                       value(d),
                                        state.f_x_previous,
                                        grad(d),
                                        options.x_tol,

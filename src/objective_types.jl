@@ -206,19 +206,17 @@ function TwiceDifferentiable{T}(f,
                                        copy(x_seed), copy(x_seed), [1], [1], [0])
 end
 
-function value(obj, x)
-    if x != obj.last_x_f
-        obj.f_calls .+= 1
-        return obj.f(x)
-    else
-        return obj.f_x
-    end
-end
-
 function _unchecked_value!(obj, x)
     obj.f_calls .+= 1
     copy!(obj.last_x_f, x)
     obj.f_x = obj.f(x)
+end
+function value(obj, x)
+    if x != obj.last_x_f
+        obj.f_calls += 1
+        return obj.f(x) 
+    end
+    obj.f_x
 end
 function value!(obj, x)
     if x != obj.last_x_f
@@ -264,9 +262,10 @@ function hessian!(obj, x)
     end
 end
 
-#get_grad(obj) ?
+# Getters are without ! and accept only an objective and index or just an objective
+value(obj) = obj.f_x
 grad(obj) = obj.g
-grad(obj, i) = obj.g[i]
+grad(obj, i::Integer) = obj.g[i]
 hessian(obj) = obj.H
 #=
 # This can be used when LineSearches switches to value_grad! and family

@@ -82,7 +82,7 @@ function initial_state{T}(method::ParticleSwarm, options, f, initial_x::Array{T}
     x_learn = zeros(T, n)
 
     current_state = 0
-    f.f_x = value(f, initial_x)
+    value!(f, initial_x)
 
     # if search space is limited, spread the initial population
     # uniformly over the whole search space
@@ -152,7 +152,7 @@ function update_state!{T}(f, state::ParticleSwarmState{T}, method::ParticleSwarm
                               state.X,
                               state.X_best,
                               state.x,
-                              f.f_x,
+                              value(f),
                               state.n_particles)
     # Elitist Learning:
     # find a new solution named 'x_learn' which is the current best
@@ -162,8 +162,8 @@ function update_state!{T}(f, state::ParticleSwarmState{T}, method::ParticleSwarm
     # In all other cases discard x_learn.
     # This helps jumping out of local minima.
     worst_score, i_worst = findmax(state.score)
-    for k in 1:state.n
-        state.x_learn[k] = state.x[k]
+    @simd for k in 1:state.n
+        @inbounds state.x_learn[k] = state.x[k]
     end
     random_index = rand(1:state.n)
     random_value = randn()
@@ -186,7 +186,7 @@ function update_state!{T}(f, state::ParticleSwarmState{T}, method::ParticleSwarm
     end
 
     score_learn = value(f, state.x_learn)
-    if score_learn < f.f_x
+    if score_learn < value(f)
         f.f_x = score_learn * 1.0
         for j in 1:state.n
             state.X_best[j, i_worst] = state.x_learn[j]

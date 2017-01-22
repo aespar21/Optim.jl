@@ -159,7 +159,6 @@ function optimize{T, M<:Optimizer}(d, initial_x::Array{T}, method::M, options::O
         error("Use optimize(f, scalar, scalar) for 1D problems")
     end
 
-
     state = initial_state(method, options, d, initial_x)
 
     tr = OptimizationTrace{typeof(method)}()

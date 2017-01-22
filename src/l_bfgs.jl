@@ -155,14 +155,14 @@ function update_state!{T}(d, state::LBFGSState{T}, method::LBFGS)
     end
 
     LineSearches.clear!(state.lsr)
-    push!(state.lsr, zero(T), d.f_x, dphi0)
+    push!(state.lsr, zero(T), value(d), dphi0)
 
     # compute an initial guess for the linesearch based on
     # Nocedal/Wright, 2nd ed, (3.60)
     # TODO: this is a temporary fix, but should eventually be split off into
     #       a separate type and possibly live in LineSearches; see #294
     if method.extrapolate && state.pseudo_iteration > 1
-        alphaguess = 2.0 * (d.f_x - state.f_x_previous) / dphi0
+        alphaguess = 2.0 * (value(d) - state.f_x_previous) / dphi0
         alphaguess = max(alphaguess, state.alpha/4.0)  # not too much reduction
         # if alphaguess ≈ 1, then make it 1 (Newton-type behaviour)
         if method.snap2one[1] < alphaguess < method.snap2one[2]
@@ -185,7 +185,6 @@ function update_state!{T}(d, state::LBFGSState{T}, method::LBFGS)
     end
 
     # Save old f and g values to prepare for update_g! call
-    state.f_x_previous = d.f_x
     copy!(state.g_previous, grad(d))
     lssuccess == false # break on linesearch error
 end

@@ -98,12 +98,12 @@ end
 
 
 function initial_state{T}(method::ConjugateGradient, options, d, initial_x::Array{T})
-    d.f_x = value_grad!(d, initial_x)
+    value_grad!(d, initial_x)
 
     pg = copy(grad(d))
-    @assert typeof(d.f_x) == T
+    @assert typeof(value(d)) == T
     # Output messages
-    if !isfinite(d.f_x)
+    if !isfinite(value(d))
         error("Must have finite starting value")
     end
     if !all(isfinite, grad(d))
@@ -146,9 +146,9 @@ function update_state!{T}(d, state::ConjugateGradientState{T}, method::Conjugate
 
         # Refresh the line search cache
         LineSearches.clear!(state.lsr)
-        @assert typeof(d.f_x) == T
+        @assert typeof(value(d)) == T
         @assert typeof(dphi0) == T
-        push!(state.lsr, zero(T), d.f_x, dphi0)
+        push!(state.lsr, zero(T), value(d), dphi0)
 
         # Pick the initial step size (HZ #I1-I2)
         state.alpha, state.mayterminate, f_update, g_update =
@@ -168,10 +168,11 @@ function update_state!{T}(d, state::ConjugateGradientState{T}, method::Conjugate
         copy!(state.g_previous, grad(d))
 
         # Update the function value and gradient
-        state.f_x_previous, d.f_x = d.f_x, value_grad!(d, state.x)
+        state.f_x_previous = value(d)
+        value_grad!(d, state.x)
 
         # Check sanity of function and gradient
-        if !isfinite(d.f_x)
+        if !isfinite(value(d))
             error("Function value must be finite.")
         end
 
