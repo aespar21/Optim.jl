@@ -1,5 +1,6 @@
 const has_deprecated_options = Ref(false)
 const has_deprecated_linesearch! = Ref(false)
+const has_deprecated_neighbor! = Ref(false)
 const has_deprecated_precondprep! = Ref(false)
 const has_deprecated_levenberg_marquardt = Ref(false)
 
@@ -72,4 +73,15 @@ function get_precondprep(precondprep!, precondprep)
         return precondprep!
     end
     precondprep
+end
+
+function get_neighbor(neighbor!, neighbor)
+    if neighbor! != nothing
+        if !has_deprecated_neighbor![]
+            warn("neighbor! keyword is deprecated, use neighbor instead (without !)")
+            has_deprecated_neighbor![] = true
+        end
+        return neighbor!
+    end
+    neighbor
 end
