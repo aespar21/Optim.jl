@@ -25,12 +25,12 @@ using central finite differencing:
 ```jl
 optimize(f, [0.0, 0.0], LBFGS())
 ```
-Alternatively, the `autodiff` keyword will use atomatic differentiation to construct
-the gradient.
+It is also possible to use [ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl) to perform automatic differentiation. To do that, we have to create an instance of the `OnceDifferentiable` type. In the constructor we simply use the `method = :forwarddiff` keyword, and pass that to `optimize`
 ```jl
-optimize(f, [0.0, 0.0], LBFGS(), Optim.Options(autodiff = true))
+od = OnceDifferentiable(f, [0.0, 0.0]; method = :forwarddiff)
+optimize(od, [0.0, 0.0], LBFGS())
 ```
-For better performance and greater precision, you can pass your own gradient function. For the Rosenbrock example, the analytical gradient can be shown to be:
+For better performance and/or greater precision, you can pass your own gradient function. For the Rosenbrock example, the analytical gradient can be shown to be:
 ```jl
 function g!(x::Vector, storage::Vector)
 storage[1] = -2.0 * (1.0 - x[1]) - 400.0 * (x[2] - x[1]^2) * x[1]
@@ -38,7 +38,7 @@ storage[2] = 200.0 * (x[2] - x[1]^2)
 end
 ```
 Note that the functions we're using to calculate the gradient (and later the Hessian `h!`) of the Rosenbrock function mutate a fixed-sized storage array, which is passed as an additional argument called `storage`. By mutating a single array over many iterations, this style of function definition removes the sometimes considerable costs associated with allocating a new array during each call to the `g!` or `h!` functions. You can use `Optim` without manually defining a gradient or Hessian function, but if you do define these functions, they must take these two arguments in this order.
-Returning to our optimization, you simply pass `g!` together with `f` from before to use the gradient:
+Returning to our optimization problem, you simply pass `g!` together with `f` from before to use the gradient:
 ```jl
 optimize(f, g!, [0.0, 0.0], LBFGS())
 ```
@@ -49,10 +49,10 @@ optimize(f, g!, [0.0, 0.0], SimulatedAnnealing())
 In addition to providing gradients, you can provide a Hessian function `h!` as well. In our current case this is:
 ```jl
 function h!(x::Vector, storage::Matrix)
-storage[1, 1] = 2.0 - 400.0 * x[2] + 1200.0 * x[1]^2
-storage[1, 2] = -400.0 * x[1]
-storage[2, 1] = -400.0 * x[1]
-storage[2, 2] = 200.0
+    storage[1, 1] = 2.0 - 400.0 * x[2] + 1200.0 * x[1]^2
+    storage[1, 2] = -400.0 * x[1]
+    storage[2, 1] = -400.0 * x[1]
+    storage[2, 2] = 200.0
 end
 ```
 Now we can use Newton's method for optimization by running:
@@ -73,13 +73,10 @@ exact Hessians.
 A primal interior-point algorithm for simple "box" constraints (lower and upper bounds) is also available:
 
 ```jl
-function f(x::Vector)
-    return (1.0 - x[1])^2 + 100.0 * (x[2] - x[1]^2)^2
-end
 lower = [1.25, -2.1]
 upper = [Inf, Inf]
 initial_x = [2.0, 2.0]
-results = optimize(Differentiable(f), initial_x, lower, upper, Fminbox(), optimizer = GradientDescent)
+results = optimize(Differentiable(f, g!, initial_x), initial_x, lower, upper, Fminbox(), optimizer = GradientDescent)
 ```
 
 This performs optimization with a barrier penalty, successively scaling down the barrier coefficient and using the chosen `optimizer` for convergence at each step. Notice that the `Optimizer` type, not an instance should be passed. This means that the keyword should be passed as `optimizer = GradientDescent` not `optimizer = GradientDescent()`, as you usually would.
@@ -90,11 +87,11 @@ There are two iterations parameters: an outer iterations parameter used to contr
 
 For example, the following restricts the optimization to 2 major iterations
 ```julia
-results = optimize(Differentiable(f), initial_x, l, u, Fminbox(); optimizer = GradientDescent, iterations = 2)
+results = optimize(Differentiable(f, g!, initial_x), initial_x, l, u, Fminbox(); optimizer = GradientDescent, iterations = 2)
 ```
 In contrast, the following sets the maximum number of iterations for each `ConjugateGradient` optimization to 2
 ```julia
-results = Optim.optimize(Differentiable(f), initial_x, l, u, Fminbox(); optimizer = GradientDescent, optimizer_o = Optim.Options(iterations = 2))
+results = Optim.optimize(Differentiable(f), initial_x, lower, upper, Fminbox(); optimizer = GradientDescent, optimizer_o = Optim.Options(iterations = 2))
 ```
 ## Minimizing a univariate function on a bounded interval
 
@@ -173,6 +170,9 @@ Defined for multivariate optimization:
 * `f_converged(res)`
 * `g_converged(res)`
 * `initial_state(res)`
+
+## Input types
+Most users will input `Vector`'s as their `initial_x`'s, and get an `Optim.minimizer(res)` out that is also a vector. For zeroth and first order methods, it is also possible to pass in matrices, or even higher dimension arrays. The only restriction imposed by leaving the `Vector` case is, that it is no longer possible to use finite difference approximations or autmatic differentiation. Second order methods (variants of Newton's method) do not support this more general input type.
 
 ## Notes on convergence flags and checks
 Currently, it is possible to access a minimizer using `Optim.minimizer(result)` even if
