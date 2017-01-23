@@ -89,10 +89,10 @@ function LBFGS(; linesearch! = nothing,
     LBFGS(Int(m), linesearch, P, precondprep, extrapolate, snap2one)
 end
 
-type LBFGSState{T}
+type LBFGSState{T, G}
     @add_generic_fields()
     x_previous::Array{T}
-    g_previous::Array{T}
+    g_previous::G
     rho::Array{T}
     dx_history::Array{T}
     dg_history::Array{T}

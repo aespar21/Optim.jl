@@ -84,10 +84,10 @@ function ConjugateGradient(; linesearch! = nothing,
                       linesearch)
 end
 
-type ConjugateGradientState{T}
+type ConjugateGradientState{T, G}
     @add_generic_fields()
     x_previous::Array{T}
-    g_previous::Array{T}
+    g_previous::G
     f_x_previous::T
     y::Array{T}
     py::Array{T}

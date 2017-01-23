@@ -18,10 +18,10 @@ function BFGS(; linesearch! = nothing,
     BFGS(linesearch, initial_invH, resetalpha)
 end
 
-type BFGSState{T}
+type BFGSState{T, G}
     @add_generic_fields()
     x_previous::Array{T}
-    g_previous::Array{T}
+    g_previous::G
     f_x_previous::T
     dx::Array{T}
     dg::Array{T}

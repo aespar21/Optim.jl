@@ -28,7 +28,7 @@ function optimize{F<:Function, G<:Function}(f::F, g!::G, initial_x::Array; kwarg
     checked_kwargs, method = check_kwargs(kwargs, BFGS())
     optimize(f, g!, initial_x, method, Options(;checked_kwargs...))
 end
-function optimize(d::Differentiable, initial_x::Array; kwargs...)
+function optimize(d::OnceDifferentiable, initial_x::Array; kwargs...)
     checked_kwargs, method = check_kwargs(kwargs, BFGS())
     optimize(d, initial_x, method, Options(checked_kwargs...))
 end
@@ -52,7 +52,7 @@ function optimize(d, initial_x::Array,
     optimize(d, initial_x, method, options)
 end
 optimize(d::Function, initial_x, options::Options) = optimize(d, initial_x, NelderMead(), options)
-optimize(d::Differentiable, initial_x, options::Options) = optimize(d, initial_x, BFGS(), options)
+optimize(d::OnceDifferentiable, initial_x, options::Options) = optimize(d, initial_x, BFGS(), options)
 optimize(d::TwiceDifferentiable, initial_x, options::Options) = optimize(d, initial_x, Newton(), options)
 
 function optimize{F<:Function, G<:Function}(f::F,
@@ -60,14 +60,14 @@ function optimize{F<:Function, G<:Function}(f::F,
                   initial_x::Array,
                   method::Optimizer,
                   options::Options = Options())
-    d = Differentiable(f, g!, initial_x)
+    d = OnceDifferentiable(f, g!, initial_x)
     optimize(d, initial_x, method, options)
 end
 function optimize{F<:Function, G<:Function}(f::F,
                   g!::G,
                   initial_x::Array,
                   options::Options)
-    d = Differentiable(f, g!, initial_x)
+    d = OnceDifferentiable(f, g!, initial_x)
     optimize(d, initial_x, BFGS(), options)
 end
 
@@ -94,20 +94,20 @@ function optimize{F<:Function, T, M <: Union{FirstOrderSolver, SecondOrderSolver
                   method::M,
                   options::Options)
     if M <: FirstOrderSolver
-        return optimize(Differentiable(f, initial_x), initial_x, method, options)
+        return optimize(OnceDifferentiable(f, initial_x), initial_x, method, options)
     else
         return optimize(TwiceDifferentiable(f, initial_x), initial_x, method, options)
     end
 end
 
-function optimize(d::Differentiable,
+function optimize(d::OnceDifferentiable,
                   initial_x::Array,
                   method::Newton,
                   options::Options)
     optimize(TwiceDifferentiable(d), initial_x, method, options)
 end
 
-function optimize(d::Differentiable,
+function optimize(d::OnceDifferentiable,
                   initial_x::Array,
                   method::NewtonTrustRegion,
                   options::Options)
@@ -138,7 +138,7 @@ end
 function clear_object!(d::NonDifferentiable)
     d.f_calls = [0]
 end
-function clear_object!(d::Differentiable)
+function clear_object!(d::OnceDifferentiable)
     d.f_calls = [0]
     d.g_calls = [0]
 end

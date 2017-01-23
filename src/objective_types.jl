@@ -6,7 +6,7 @@ type NonDifferentiable{F, T}
 end
 NonDifferentiable{T}(f, x_seed::Array{T}) = NonDifferentiable(f, f(x_seed), copy(x_seed), [1])
 
-type Differentiable{F, G, Tfg, T, Tgrad}
+type OnceDifferentiable{F, G, Tfg, T, Tgrad}
     f::F
     g!::G
     fg!::Tfg
@@ -17,19 +17,19 @@ type Differentiable{F, G, Tfg, T, Tgrad}
     f_calls::Vector{Int}
     g_calls::Vector{Int}
 end
-function Differentiable(f, g!, fg!, x_seed)
+function OnceDifferentiable(f, g!, fg!, x_seed)
     g = similar(x_seed)
     g!(x_seed, g)
-    Differentiable(f, g!, fg!, f(x_seed), g, copy(x_seed), copy(x_seed), [1], [1])
+    OnceDifferentiable(f, g!, fg!, f(x_seed), g, copy(x_seed), copy(x_seed), [1], [1])
 end
-function Differentiable(f, g!, x_seed)
+function OnceDifferentiable(f, g!, x_seed)
     function fg!(x, storage)
         g!(x, storage)
         return f(x)
     end
-    return Differentiable(f, g!, fg!, x_seed)
+    return OnceDifferentiable(f, g!, fg!, x_seed)
 end
-function Differentiable{T}(f, x_seed::Array{T}; method = :finitediff)
+function OnceDifferentiable{T}(f, x_seed::Vector{T}; method = :finitediff)
     n_x = length(x_seed)
     f_calls = [1]
     g_calls = [1]
@@ -43,7 +43,7 @@ function Differentiable{T}(f, x_seed::Array{T}; method = :finitediff)
             return f(x)
         end
     elseif method == :forwarddiff
-        gcfg = ForwardDiff.GradientConfig(initial_x)
+        gcfg = ForwardDiff.GradientConfig(x_seed)
         g! = (x, out) -> ForwardDiff.gradient!(out, f, x, gcfg)
 
         fg! = (x, out) -> begin
@@ -54,7 +54,7 @@ function Differentiable{T}(f, x_seed::Array{T}; method = :finitediff)
     end
     g = similar(x_seed)
     g!(x_seed, g)
-    return Differentiable(f, g!, fg!, f(x_seed), g, copy(x_seed), copy(x_seed), f_calls, g_calls)
+    return OnceDifferentiable(f, g!, fg!, f(x_seed), g, copy(x_seed), copy(x_seed), f_calls, g_calls)
 end
 
 type TwiceDifferentiable{F<:Function, G<:Function, Tfg <: Union{Function, Void}, H<:Function, T<:Real}
@@ -93,7 +93,7 @@ function TwiceDifferentiable{T}(f,
     end
     return TwiceDifferentiable(f, g!, fg!, h!, x_seed)
 end
-function TwiceDifferentiable{T}(f, x_seed::Array{T}; method = :finitediff)
+function TwiceDifferentiable{T}(f, x_seed::Vector{T}; method = :finitediff)
     n_x = length(x_seed)
     f_calls = [1]
     g_calls = [1]
@@ -108,11 +108,11 @@ function TwiceDifferentiable{T}(f, x_seed::Array{T}; method = :finitediff)
             return f(x)
         end
         function h!(x::Vector, storage::Matrix)
-            Calculus.finite_difference_hessian!(x->(f_calls[1]+=1;f(x)), x, storage)
+            Calculus.finite_difference_hessian!(x->(f_calls[1]+=1;f(x)), x, storage, :central)
             return
         end
     elseif method == :forwarddiff
-        gcfg = ForwardDiff.GradientConfig(initial_x)
+        gcfg = ForwardDiff.GradientConfig(x_seed)
         g! = (x, out) -> ForwardDiff.gradient!(out, f, x, gcfg)
 
         fg! = (x, out) -> begin
@@ -121,7 +121,7 @@ function TwiceDifferentiable{T}(f, x_seed::Array{T}; method = :finitediff)
             DiffBase.value(gr_res)
         end
 
-        hcfg = ForwardDiff.HessianConfig(initial_x)
+        hcfg = ForwardDiff.HessianConfig(x_seed)
         h! = (x, out) -> ForwardDiff.hessian!(out, f, x, hcfg)
     end
     g = similar(x_seed)
@@ -177,7 +177,7 @@ function TwiceDifferentiable{T}(f, g!, fg!, x_seed::Array{T}; method = :finitedi
                                        g, Array{T}(n_x, n_x), copy(x_seed), f_calls, [1], [0])
 end
 =#
-function TwiceDifferentiable(d::Differentiable; method = :finitediff)
+function TwiceDifferentiable(d::OnceDifferentiable; method = :finitediff)
     n_x = length(d.last_x_f)
     T = eltype(d.last_x_f)
     if method == :finitediff
@@ -262,7 +262,7 @@ hessian(obj) = obj.H
 # Remember to change all fg!'s to "nothing" for finite differences
 # and when f and g! are passed but no fg!. Can potentially avoid more calls
 # than current setup.
-function value_grad!(obj::Union{Differentiable{Void}, TwiceDifferentiable{Void}}, x)
+function value_grad!(obj::Union{OnceDifferentiable{Void}, TwiceDifferentiable{Void}}, x)
     if x != obj.last_x_f
         _unchecked_value!(obj, x)
     end

@@ -103,7 +103,7 @@ end
 immutable Fminbox <: Optimizer end
 
 function optimize{T<:AbstractFloat}(
-        df::Differentiable,
+        df::OnceDifferentiable,
         initial_x::Array{T},
         l::Array{T},
         u::Array{T},
@@ -183,7 +183,7 @@ function optimize{T<:AbstractFloat}(
         # Optimize with current setting of mu
         funcc = (x, g) -> barrier_combined(x, g, gfunc, gbarrier, fb, mu)
         fval0 = funcc(x, nothing)
-        dfbox = Differentiable(x->funcc(x,nothing), (x,g)->(funcc(x,g); g), funcc, initial_x)
+        dfbox = OnceDifferentiable(x->funcc(x,nothing), (x,g)->(funcc(x,g); g), funcc, initial_x)
         if show_trace > 0
             println("#### Calling optimizer with mu = ", mu, " ####")
         end
