@@ -31,7 +31,7 @@
     end
 
     @testset "tensor" begin
-        eye3 = Array{Float64}(2,2,1)
+        eye3 = zeros(2,2,1)
         eye3[:,:,1] = eye(2)
         for m in (AcceleratedGradientDescent(), ConjugateGradient(), BFGS(), LBFGS(), NelderMead(), GradientDescent(), MomentumGradientDescent(), NelderMead(), SimulatedAnnealing(), ParticleSwarm())
             res = optimize(f, g!, eye3, GradientDescent())

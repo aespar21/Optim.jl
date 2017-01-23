@@ -137,12 +137,12 @@ end
 function TwiceDifferentiable{T}(f, g!, x_seed::Array{T}; method = :finitediff)
     n_x = length(x_seed)
     f_calls = [1]
-    function fg!(x::Vector, storage::Vector)
+    function fg!(x, storage)
         g!(x, storage)
         return f(x)
     end
     if method == :finitediff
-        function h!(x::Vector, storage::Matrix)
+        function h!(x, storage)
             Calculus.finite_difference_hessian!(x->(f_calls[1]+=1;f(x)), x, storage)
             return
         end
@@ -192,7 +192,7 @@ function TwiceDifferentiable(d::Differentiable; method = :finitediff)
     H = Array{T}(n_x, n_x)
     h!(d.last_x_g, H)
     return TwiceDifferentiable(d.f, d.g!, d.fg!, h!, d.f_x,
-                                       gradient(d), Array{T}(n_x, n_x), d.last_x_f,
+                                       gradient(d), H, d.last_x_f,
                                        d.last_x_g, similar(d.last_x_g), d.f_calls, d.g_calls, [1])
 end
 
