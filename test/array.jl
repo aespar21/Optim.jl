@@ -1,19 +1,32 @@
-@testset "Matrix input" begin
-    f(X) = (10 - X[1, 1])^2 + (0 - X[1, 2])^2 + (0 - X[2, 1])^2 + (5 - X[2, 2])^2
+@testset "input types" begin
+    f(X) = (10 - X[1])^2 + (0 - X[2])^2 + (0 - X[3])^2 + (5 - X[4])^2
 
     function g!(X, S)
-        S[1, 1] = -20 + 2 * X[1, 1]
-        S[1, 2] = 2 * X[1, 2]
-        S[2, 1] = 2 * X[2, 1]
-        S[2, 2] = -10 + 2 * X[2, 2]
+        S[1] = -20 + 2 * X[1]
+        S[2] = 2 * X[2]
+        S[3] = 2 * X[3]
+        S[4] = -10 + 2 * X[4]
         return
     end
+    @testset "vector" begin
+        for m in (AcceleratedGradientDescent(), ConjugateGradient(), BFGS(), LBFGS(), NelderMead(), GradientDescent(), MomentumGradientDescent(), NelderMead(), SimulatedAnnealing(), ParticleSwarm())
+            res = optimize(f, g!, [1., 0., 1., 0.], GradientDescent())
 
-    for m in (AcceleratedGradientDescent(), GradientDescent(), MomentumGradientDescent(), NelderMead(), SimulatedAnnealing())
-        res = optimize(f, g!, eye(2), GradientDescent())
-
-        @test norm(vec(Optim.minimizer(res) - [10.0 0.0; 0.0 5.0])) < 10e-8
+            @test typeof(Optim.minimizer(res)) <: Vector
+            @test norm(Optim.minimizer(res) - [10.0, 0.0, 0.0, 5.0]) < 10e-8
+        end
+        # TODO: Get finite differencing to work for generic arrays as well
+        # optimize(f, eye(2), method = :gradient_descent)
     end
-    # TODO: Get finite differencing to work for generic arrays as well
-    # optimize(f, eye(2), method = :gradient_descent)
+
+    @testset "matrix" begin
+        for m in (AcceleratedGradientDescent(), ConjugateGradient(), BFGS(), LBFGS(), NelderMead(), GradientDescent(), MomentumGradientDescent(), NelderMead(), SimulatedAnnealing(), ParticleSwarm())
+            res = optimize(f, g!, eye(2), GradientDescent())
+
+            @test typeof(Optim.minimizer(res)) <: Matrix
+            @test norm(Optim.minimizer(res) - [10.0 0.0; 0.0 5.0]) < 10e-8
+        end
+        # TODO: Get finite differencing to work for generic arrays as well
+        # optimize(f, eye(2), method = :gradient_descent)
+    end
 end
