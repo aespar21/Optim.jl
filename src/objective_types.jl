@@ -1,21 +1,21 @@
-type NonDifferentiable
-    f
-    f_x
-    last_x_f
-    f_calls
+type NonDifferentiable{F<:Function, T<:Real}
+    f::F
+    f_x::T
+    last_x_f::Array{T}
+    f_calls::Vector{Int}
 end
 NonDifferentiable{T}(f, x_seed::Array{T}) = NonDifferentiable(f, f(x_seed), copy(x_seed), [1])
 
-type Differentiable{Tfg <: Union{Function, Void}}
-    f
-    g!
+type Differentiable{F<:Function, G<:Function, Tfg <: Union{Function, Void}, T<:Real}
+    f::F
+    g!::G
     fg!::Tfg
-    f_x
+    f_x::T
     g
-    last_x_f
-    last_x_g
-    f_calls
-    g_calls
+    last_x_f::Array{T}
+    last_x_g::Array{T}
+    f_calls::Vector{Int}
+    g_calls::Vector{Int}
 end
 function Differentiable{T}(f, g!, fg!, x_seed::Array{T})
     g = similar(x_seed)
@@ -60,20 +60,20 @@ function Differentiable{T}(f, g!, x_seed::Array{T})
     return Differentiable(f, g!, fg!, f(x_seed), g, copy(x_seed), copy(x_seed), [1], [1])
 end
 
-type TwiceDifferentiable{Tfg <: Union{Function, Void}}
-    f
-    g!
+type TwiceDifferentiable{F<:Function, G<:Function, Tfg <: Union{Function, Void}, H<:Function, T<:Real}
+    f::F
+    g!::G
     fg!::Tfg
-    h!
-    f_x
-    g
-    H
-    last_x_f
-    last_x_g
-    last_x_h
-    f_calls
-    g_calls
-    h_calls
+    h!::H
+    f_x::T
+    g::Vector{T}
+    H::Matrix{T}
+    last_x_f::Vector{T}
+    last_x_g::Vector{T}
+    last_x_h::Vector{T}
+    f_calls::Vector{Int}
+    g_calls::Vector{Int}
+    h_calls::Vector{Int}
 end
 function TwiceDifferentiable{T}(f, g!, fg!, h!, x_seed::Array{T})
     n_x = length(x_seed)
@@ -214,7 +214,7 @@ end
 function value(obj, x)
     if x != obj.last_x_f
         obj.f_calls += 1
-        return obj.f(x) 
+        return obj.f(x)
     end
     obj.f_x
 end
