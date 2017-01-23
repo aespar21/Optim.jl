@@ -36,11 +36,11 @@ function trace!(tr, d, state, iteration, method::BFGS, options)
     dt = Dict()
     if options.extended_trace
         dt["x"] = copy(state.x)
-        dt["g(x)"] = copy(grad(d))
+        dt["g(x)"] = copy(gradient(d))
         dt["~inv(H)"] = copy(state.invH)
         dt["Current step size"] = state.alpha
     end
-    g_norm = vecnorm(grad(d), Inf)
+    g_norm = vecnorm(gradient(d), Inf)
     update!(tr,
     iteration,
     value(d),
@@ -56,10 +56,10 @@ function trace!(tr, d, state, iteration, method::Union{LBFGS, AcceleratedGradien
     dt = Dict()
     if options.extended_trace
         dt["x"] = copy(state.x)
-        dt["g(x)"] = copy(grad(d))
+        dt["g(x)"] = copy(gradient(d))
         dt["Current step size"] = state.alpha
     end
-    g_norm = vecnorm(grad(d), Inf)
+    g_norm = vecnorm(gradient(d), Inf)
     update!(tr,
             iteration,
             value(d),
@@ -75,10 +75,10 @@ function trace!(tr, d, state, iteration, method::Newton, options)
     dt = Dict()
     if options.extended_trace
         dt["x"] = copy(state.x)
-        dt["g(x)"] = copy(grad(d))
+        dt["g(x)"] = copy(gradient(d))
         dt["h(x)"] = copy(d.H_x)
     end
-    g_norm = vecnorm(grad(d), Inf)
+    g_norm = vecnorm(gradient(d), Inf)
     update!(tr,
             iteration,
             value(d),
@@ -94,7 +94,7 @@ function trace!(tr, d, state, iteration, method::NewtonTrustRegion, options)
     dt = Dict()
     if options.extended_trace
         dt["x"] = copy(state.x)
-        dt["g(x)"] = copy(grad(d))
+        dt["g(x)"] = copy(gradient(d))
         dt["h(x)"] = copy(d.H_x)
         dt["delta"] = copy(state.delta)
         dt["interior"] = state.interior
@@ -102,7 +102,7 @@ function trace!(tr, d, state, iteration, method::NewtonTrustRegion, options)
         dt["reached_subproblem_solution"] = state.reached_subproblem_solution
         dt["lambda"] = state.lambda
     end
-    g_norm = norm(grad(d), Inf)
+    g_norm = norm(gradient(d), Inf)
     update!(tr,
             iteration,
             value(d),

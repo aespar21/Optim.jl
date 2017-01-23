@@ -41,17 +41,17 @@ end
 function update_state!{T}(d, state::GradientDescentState{T}, method::GradientDescent)
     # Search direction is always the negative preconditioned gradient
     method.precondprep!(method.P, state.x)
-    A_ldiv_B!(state.s, method.P, grad(d))
+    A_ldiv_B!(state.s, method.P, gradient(d))
     @simd for i in 1:state.n
         @inbounds state.s[i] = -state.s[i]
     end
     # Refresh the line search cache
-    dphi0 = vecdot(grad(d), state.s)
+    dphi0 = vecdot(gradient(d), state.s)
     LineSearches.clear!(state.lsr)
     push!(state.lsr, zero(T), value(d), dphi0)
 
     # Determine the distance of movement along the search line
-    lssuccess = do_linesearch(state, method, d)
+    lssuccess = perform_linesearch(state, method, d)
 
     # Maintain a record of previous position
     copy!(state.x_previous, state.x)

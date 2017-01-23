@@ -51,7 +51,7 @@ function assess_convergence(d, state, options::Options)
         f_increased = true
     end
 
-    if vecnorm(grad(d), Inf) < options.g_tol
+    if vecnorm(gradient(d), Inf) < options.g_tol
         g_converged = true
     end
 
@@ -84,7 +84,7 @@ function assess_convergence(d, state::NewtonTrustRegionState, options::Options)
                                        state.x_previous,
                                        value(d),
                                        state.f_x_previous,
-                                       grad(d),
+                                       gradient(d),
                                        options.x_tol,
                                        options.f_tol,
                                        options.g_tol)

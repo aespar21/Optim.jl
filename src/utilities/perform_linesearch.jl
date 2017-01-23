@@ -1,5 +1,5 @@
-do_linesearch(state, method, d) = do_linesearch(state, method, d, state.alpha)
-function do_linesearch(state, method, d, alphaguess)
+perform_linesearch(state, method, d) = perform_linesearch(state, method, d, state.alpha)
+function perform_linesearch(state, method, d, alphaguess)
     # Determine the distance of movement along the search line
     try
         state.alpha, f_update, g_update =

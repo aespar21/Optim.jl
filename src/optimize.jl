@@ -172,7 +172,7 @@ function optimize{T, M<:Optimizer}(d, initial_x::Array{T}, method::M, options::O
     elseif  typeof(method) <: ParticleSwarm || typeof(method) <: SimulatedAnnealing
         g_converged = false
     else
-        vecnorm(grad(d), Inf) < options.g_tol
+        vecnorm(gradient(d), Inf) < options.g_tol
     end
 
     converged = g_converged

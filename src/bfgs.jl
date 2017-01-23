@@ -39,7 +39,7 @@ function initial_state{T}(method::BFGS, options, d, initial_x::Array{T})
               n,
               copy(initial_x), # Maintain current state in state.x
               copy(initial_x), # Maintain current state in state.x_previous
-              copy(grad(d)), # Store previous gradient in state.g_previous
+              copy(gradient(d)), # Store previous gradient in state.g_previous
               T(NaN), # Store previous f in state.f_x_previous
               Array{T}(n), # Store changes in position in state.dx
               Array{T}(n), # Store changes in gradient in state.dg
@@ -54,18 +54,18 @@ end
 function update_state!{T}(d, state::BFGSState{T}, method::BFGS)
     # Set the search direction
     # Search direction is the negative gradient divided by the approximate Hessian
-    A_mul_B!(state.s, state.invH, grad(d))
+    A_mul_B!(state.s, state.invH, gradient(d))
     scale!(state.s, -1)
 
     # Refresh the line search cache
-    dphi0 = vecdot(grad(d), state.s)
+    dphi0 = vecdot(gradient(d), state.s)
     # If invH is not positive definite, reset it to I
     if dphi0 > 0.0
         copy!(state.invH, state.I)
         @simd for i in 1:state.n
-            @inbounds state.s[i] = -grad(g, i)
+            @inbounds state.s[i] = -gradient(g, i)
         end
-        dphi0 = vecdot(grad(d), state.s)
+        dphi0 = vecdot(gradient(d), state.s)
     end
     LineSearches.clear!(state.lsr)
     push!(state.lsr, zero(T), d.f_x, dphi0)
@@ -74,7 +74,7 @@ function update_state!{T}(d, state::BFGSState{T}, method::BFGS)
     if method.resetalpha == true
         state.alpha = one(T)
     end
-    lssuccess = do_linesearch(state, method, d)
+    lssuccess = perform_linesearch(state, method, d)
 
     # Maintain a record of previous position
     copy!(state.x_previous, state.x)
@@ -86,14 +86,14 @@ function update_state!{T}(d, state::BFGSState{T}, method::BFGS)
     end
 
     # Maintain a record of the previous gradient
-    copy!(state.g_previous, grad(d))
+    copy!(state.g_previous, gradient(d))
     (lssuccess == false) # break on linesearch error
 end
 
 function update_h!(d, state, method::BFGS)
     # Measure the change in the gradient
     @simd for i in 1:state.n
-        @inbounds state.dg[i] = grad(d, i) - state.g_previous[i]
+        @inbounds state.dg[i] = gradient(d, i) - state.g_previous[i]
     end
 
     # Update the inverse Hessian approximation using Sherman-Morrison

@@ -50,16 +50,16 @@ function update_state!{T}(d, state::AcceleratedGradientDescentState{T}, method::
     state.iteration += 1
     # Search direction is always the negative gradient
     @simd for i in 1:state.n
-        @inbounds state.s[i] = -grad(d, i)
+        @inbounds state.s[i] = -gradient(d, i)
     end
 
     # Refresh the line search cache
-    dphi0 = vecdot(grad(d), state.s)
+    dphi0 = vecdot(gradient(d), state.s)
     LineSearches.clear!(state.lsr)
     push!(state.lsr, zero(T), value(d), dphi0)
 
     # Determine the distance of movement along the search line
-    lssuccess = do_linesearch(state, method, d)
+    lssuccess = perform_linesearch(state, method, d)
 
     # Make one move in the direction of the gradient
     copy!(state.y_previous, state.y)

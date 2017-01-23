@@ -1,4 +1,4 @@
-type NonDifferentiable{F<:Function, T<:Real}
+type NonDifferentiable{F, T}
     f::F
     f_x::T
     last_x_f::Array{T}
@@ -6,32 +6,39 @@ type NonDifferentiable{F<:Function, T<:Real}
 end
 NonDifferentiable{T}(f, x_seed::Array{T}) = NonDifferentiable(f, f(x_seed), copy(x_seed), [1])
 
-type Differentiable{F<:Function, G<:Function, Tfg <: Union{Function, Void}, T<:Real}
+type Differentiable{F, G, Tfg, T, Tgrad}
     f::F
     g!::G
     fg!::Tfg
     f_x::T
-    g
+    g::Tgrad
     last_x_f::Array{T}
     last_x_g::Array{T}
     f_calls::Vector{Int}
     g_calls::Vector{Int}
 end
-function Differentiable{T}(f, g!, fg!, x_seed::Array{T})
+function Differentiable(f, g!, fg!, x_seed)
     g = similar(x_seed)
     g!(x_seed, g)
     Differentiable(f, g!, fg!, f(x_seed), g, copy(x_seed), copy(x_seed), [1], [1])
+end
+function Differentiable(f, g!, x_seed)
+    function fg!(x, storage)
+        g!(x, storage)
+        return f(x)
+    end
+    return Differentiable(f, g!, fg!, x_seed)
 end
 function Differentiable{T}(f, x_seed::Array{T}; method = :finitediff)
     n_x = length(x_seed)
     f_calls = [1]
     g_calls = [1]
     if method == :finitediff
-        function g!(x::Array, storage::Array)
+        function g!(x, storage)
             Calculus.finite_difference!(x->(f_calls[1]+=1;f(x)), x, storage, :central)
             return
         end
-        function fg!(x::Array, storage::Array)
+        function fg!(x, storage)
             g!(x, storage)
             return f(x)
         end
@@ -48,16 +55,6 @@ function Differentiable{T}(f, x_seed::Array{T}; method = :finitediff)
     g = similar(x_seed)
     g!(x_seed, g)
     return Differentiable(f, g!, fg!, f(x_seed), g, copy(x_seed), copy(x_seed), f_calls, g_calls)
-end
-
-function Differentiable{T}(f, g!, x_seed::Array{T})
-    function fg!(x::Array, storage::Array)
-        g!(x, storage)
-        return f(x)
-    end
-    g = similar(x_seed)
-    g!(x_seed, g)
-    return Differentiable(f, g!, fg!, f(x_seed), g, copy(x_seed), copy(x_seed), [1], [1])
 end
 
 type TwiceDifferentiable{F<:Function, G<:Function, Tfg <: Union{Function, Void}, H<:Function, T<:Real}
@@ -84,6 +81,17 @@ function TwiceDifferentiable{T}(f, g!, fg!, h!, x_seed::Array{T})
     TwiceDifferentiable(f, g!, fg!, h!, f(x_seed),
                                 g, H, copy(x_seed),
                                 copy(x_seed), copy(x_seed), [1], [1], [1])
+end
+
+function TwiceDifferentiable{T}(f,
+                                 g!,
+                                 h!,
+                                 x_seed::Array{T})
+    function fg!(x::Vector, storage::Vector)
+        g!(x, storage)
+        return f(x)
+    end
+    return TwiceDifferentiable(f, g!, fg!, h!, x_seed)
 end
 function TwiceDifferentiable{T}(f, x_seed::Array{T}; method = :finitediff)
     n_x = length(x_seed)
@@ -160,7 +168,7 @@ function TwiceDifferentiable{T}(f, g!, fg!, x_seed::Array{T}; method = :finitedi
             return
         end
     elseif method == :forwarddiff
-        hcfg = ForwardDiff.HessianConfig(similar(grad(d)))
+        hcfg = ForwardDiff.HessianConfig(similar(gradient(d)))
         h! = (x, out) -> ForwardDiff.hessian!(out, f, x, hcfg)
     end
     g = similar(x_seed)
@@ -178,32 +186,14 @@ function TwiceDifferentiable(d::Differentiable; method = :finitediff)
             return
         end
     elseif method == :forwarddiff
-        hcfg = ForwardDiff.HessianConfig(similar(grad(d)))
+        hcfg = ForwardDiff.HessianConfig(similar(gradient(d)))
         h! = (x, out) -> ForwardDiff.hessian!(out, d.f, x, hcfg)
     end
     H = Array{T}(n_x, n_x)
     h!(d.last_x_g, H)
     return TwiceDifferentiable(d.f, d.g!, d.fg!, h!, d.f_x,
-                                       grad(d), Array{T}(n_x, n_x), d.last_x_f,
+                                       gradient(d), Array{T}(n_x, n_x), d.last_x_f,
                                        d.last_x_g, similar(d.last_x_g), d.f_calls, d.g_calls, [1])
-end
-
-function TwiceDifferentiable{T}(f,
-                                 g!,
-                                 h!,
-                                 x_seed::Array{T})
-    n_x = length(x_seed)
-    function fg!(x::Vector, storage::Vector)
-        g!(x, storage)
-        return f(x)
-    end
-    g = similar(x_seed)
-    H = Array{T}(n_x, n_x)
-    g!(x_seed, g)
-    h!(x_seed, H)
-    return TwiceDifferentiable(f, g!, fg!, h!, f(x_seed),
-                                       g, H, copy(x_seed),
-                                       copy(x_seed), copy(x_seed), [1], [1], [0])
 end
 
 function _unchecked_value!(obj, x)
@@ -264,8 +254,8 @@ end
 
 # Getters are without ! and accept only an objective and index or just an objective
 value(obj) = obj.f_x
-grad(obj) = obj.g
-grad(obj, i::Integer) = obj.g[i]
+gradient(obj) = obj.g
+gradient(obj, i::Integer) = obj.g[i]
 hessian(obj) = obj.H
 #=
 # This can be used when LineSearches switches to value_grad! and family

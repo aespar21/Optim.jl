@@ -244,7 +244,7 @@ function initial_state{T}(method::NewtonTrustRegion, options, d, initial_x::Arra
                          length(initial_x),
                          copy(initial_x), # Maintain current state in state.x
                          copy(initial_x), # Maintain current state in state.x_previous
-                         copy(grad(d)), # Store previous gradient in state.g_previous
+                         copy(gradient(d)), # Store previous gradient in state.g_previous
                          T(NaN), # Store previous f in state.f_x_previous
                          similar(initial_x), # Maintain current search direction in state.s
                          hard_case,
@@ -262,7 +262,7 @@ function update_state!{T}(d, state::NewtonTrustRegionState{T}, method::NewtonTru
 
     # Find the next step direction.
     m, state.interior, state.lambda, state.hard_case, state.reached_subproblem_solution =
-        solve_tr_subproblem!(grad(d), hessian(d), state.delta, state.s)
+        solve_tr_subproblem!(gradient(d), hessian(d), state.delta, state.s)
 
     # Maintain a record of previous position
     copy!(state.x_previous, state.x)
@@ -273,7 +273,7 @@ function update_state!{T}(d, state::NewtonTrustRegionState{T}, method::NewtonTru
     end
 
     # Update the function value and gradient
-    copy!(state.g_previous, grad(d))
+    copy!(state.g_previous, gradient(d))
     state.f_x_previous = value(d)
     value_grad!(d, state.x)
 
@@ -313,7 +313,7 @@ function update_state!{T}(d, state::NewtonTrustRegionState{T}, method::NewtonTru
 
         d.f_x = state.f_x_previous
         copy!(state.x, state.x_previous)
-        copy!(grad(d), state.g_previous)
+        copy!(gradient(d), state.g_previous)
     end
 
     false

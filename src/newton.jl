@@ -12,12 +12,12 @@ function Newton(; linesearch! = nothing, linesearch::Function = LineSearches.hag
     Newton(linesearch,resetalpha)
 end
 
-type NewtonState{T}
+type NewtonState{T, F<:Base.LinAlg.Cholesky, THd}
     @add_generic_fields()
     x_previous::Array{T}
     f_x_previous::T
-    F
-    Hd
+    F::F
+    Hd::THd
     s::Array{T}
     @add_linesearch_fields()
 end
@@ -30,13 +30,14 @@ function initial_state{T}(method::Newton, options, d, initial_x::Array{T})
     f_x_previous = NaN
     value_grad!(d, initial_x)
     hessian!(d, initial_x)
+
     NewtonState("Newton's Method",
               length(initial_x),
               copy(initial_x), # Maintain current state in state.x
               copy(initial_x), # Maintain current state in state.x_previous
               T(NaN), # Store previous f in state.f_x_previous
-              copy(hessian(d)),
-              copy(hessian(d)),
+              Base.LinAlg.Cholesky(rand(1,1), :U),
+              Vector{Int8}(),
               similar(initial_x), # Maintain current search direction in state.s
               @initial_linesearch()...) # Maintain a cache for line search results in state.lsr
 end
@@ -49,15 +50,15 @@ function update_state!{T}(d, state::NewtonState{T}, method::Newton)
     # identity matrix" version of the modified Newton method. More
     # information can be found in the discussion at issue #153.
     state.F, state.Hd = ldltfact!(Positive, hessian(d))
-    state.s[:] = -(state.F\grad(d))
+    state.s[:] = -(state.F\gradient(d))
 
     # Refresh the line search cache
-    dphi0 = vecdot(grad(d), state.s)
+    dphi0 = vecdot(gradient(d), state.s)
     LineSearches.clear!(state.lsr)
     push!(state.lsr, zero(T), value(d), dphi0)
 
     # Determine the distance of movement along the search line
-    lssuccess = do_linesearch(state, method, d)
+    lssuccess = perform_linesearch(state, method, d)
 
     # Maintain a record of previous position
     copy!(state.x_previous, state.x)

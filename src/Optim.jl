@@ -55,7 +55,7 @@ module Optim
     include("utilities/update.jl")
 
     # Line search generic code
-    include("utilities/do_linesearch.jl")
+    include("utilities/perform_linesearch.jl")
 
     # Grid Search
     include("grid_search.jl")

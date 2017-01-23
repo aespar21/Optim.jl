@@ -100,15 +100,15 @@ end
 function initial_state{T}(method::ConjugateGradient, options, d, initial_x::Array{T})
     value_grad!(d, initial_x)
 
-    pg = copy(grad(d))
+    pg = copy(gradient(d))
     @assert typeof(value(d)) == T
     # Output messages
     if !isfinite(value(d))
         error("Must have finite starting value")
     end
-    if !all(isfinite, grad(d))
-        @show grad(d)
-        @show find(!isfinite.(grad(d)))
+    if !all(isfinite, gradient(d))
+        @show gradient(d)
+        @show find(!isfinite.(gradient(d)))
         error("Gradient must have all finite values at starting point")
     end
 
@@ -116,13 +116,13 @@ function initial_state{T}(method::ConjugateGradient, options, d, initial_x::Arra
     #    if we don't precondition, then this is an extra superfluous copy
     #    TODO: consider allowing a reference for pg instead of a copy
     method.precondprep!(method.P, initial_x)
-    A_ldiv_B!(pg, method.P, grad(d))
+    A_ldiv_B!(pg, method.P, gradient(d))
 
     ConjugateGradientState("Conjugate Gradient",
                          length(initial_x),
                          copy(initial_x), # Maintain current state in state.x
                          copy(initial_x), # Maintain current state in state.x_previous
-                         copy(grad(d)), # Store previous gradient in state.g_previous
+                         copy(gradient(d)), # Store previous gradient in state.g_previous
                          T(NaN), # Store previous f in d.f_x_previous
                          similar(initial_x), # Intermediate value in CG calculation
                          similar(initial_x), # Preconditioned intermediate value in CG calculation
@@ -133,12 +133,12 @@ end
 
 function update_state!{T}(d, state::ConjugateGradientState{T}, method::ConjugateGradient)
         # Reset the search direction if it becomes corrupted
-        dphi0 = vecdot(grad(d), state.s)
+        dphi0 = vecdot(gradient(d), state.s)
         if dphi0 >= 0
             @simd for i in 1:state.n
                 @inbounds state.s[i] = -state.pg[i]
             end
-            dphi0 = vecdot(grad(d), state.s)
+            dphi0 = vecdot(gradient(d), state.s)
             if dphi0 >= 0
                 return true
             end
@@ -156,7 +156,7 @@ function update_state!{T}(d, state::ConjugateGradientState{T}, method::Conjugate
         d.f_calls, d.g_calls = d.f_calls + f_update, d.g_calls + g_update
 
         # Determine the distance of movement along the search line
-        lssuccess = do_linesearch(state, method, d)
+        lssuccess = perform_linesearch(state, method, d)
 
         # Maintain a record of previous position
         copy!(state.x_previous, state.x)
@@ -165,7 +165,7 @@ function update_state!{T}(d, state::ConjugateGradientState{T}, method::Conjugate
         LinAlg.axpy!(state.alpha, state.s, state.x)
 
         # Maintain a record of the previous gradient
-        copy!(state.g_previous, grad(d))
+        copy!(state.g_previous, gradient(d))
 
         # Update the function value and gradient
         state.f_x_previous = value(d)
@@ -189,15 +189,15 @@ function update_state!{T}(d, state::ConjugateGradientState{T}, method::Conjugate
         dPd = dot(state.s, method.P, state.s)
         etak::T = method.eta * vecdot(state.s, state.g_previous) / dPd
         @simd for i in 1:state.n
-            @inbounds state.y[i] = grad(d, i) - state.g_previous[i]
+            @inbounds state.y[i] = gradient(d, i) - state.g_previous[i]
         end
         ydots = vecdot(state.y, state.s)
         copy!(state.py, state.pg)        # below, store pg - pg_previous in py
-        A_ldiv_B!(state.pg, method.P, grad(d))
+        A_ldiv_B!(state.pg, method.P, gradient(d))
         @simd for i in 1:state.n     # py = pg - py
            @inbounds state.py[i] = state.pg[i] - state.py[i]
         end
-        betak = (vecdot(state.y, state.pg) - vecdot(state.y, state.py) * vecdot(grad(d), state.s) / ydots) / ydots
+        betak = (vecdot(state.y, state.pg) - vecdot(state.y, state.py) * vecdot(gradient(d), state.s) / ydots) / ydots
         beta = max(betak, etak)
         @simd for i in 1:state.n
             @inbounds state.s[i] = beta * state.s[i] - state.pg[i]

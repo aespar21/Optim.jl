@@ -116,7 +116,7 @@ function initial_state{T}(method::LBFGS, options, d, initial_x::Array{T})
               n,
               copy(initial_x), # Maintain current state in state.x
               copy(initial_x), # Maintain current state in state.x_previous
-              copy(grad(d)), # Store previous gradient in state.g_previous
+              copy(gradient(d)), # Store previous gradient in state.g_previous
               Array{T}(method.m), # state.rho
               Array{T}(n, method.m), # Store changes in position in state.dx_history
               Array{T}(n, method.m), # Store changes in gradient in state.dg_history
@@ -140,18 +140,18 @@ function update_state!{T}(d, state::LBFGSState{T}, method::LBFGS)
     method.precondprep!(method.P, state.x)
 
     # Determine the L-BFGS search direction # FIXME just pass state and method?
-    twoloop!(state.s, grad(d), state.rho, state.dx_history, state.dg_history,
+    twoloop!(state.s, gradient(d), state.rho, state.dx_history, state.dg_history,
              method.m, state.pseudo_iteration,
              state.twoloop_alpha, state.twoloop_q, method.P)
 
     # Refresh the line search cache
-    dphi0 = vecdot(grad(d), state.s)
+    dphi0 = vecdot(gradient(d), state.s)
     if dphi0 > 0.0
         state.pseudo_iteration = 1
         @simd for i in 1:n
-            @inbounds state.s[i] = -grad(d, i)
+            @inbounds state.s[i] = -gradient(d, i)
         end
-        dphi0 = vecdot(grad(g), state.s)
+        dphi0 = vecdot(gradient(g), state.s)
     end
 
     LineSearches.clear!(state.lsr)
@@ -173,7 +173,7 @@ function update_state!{T}(d, state::LBFGSState{T}, method::LBFGS)
         alphaguess = state.alpha
     end
 
-    lssuccess = do_linesearch(state, method, d, alphaguess)
+    lssuccess = perform_linesearch(state, method, d, alphaguess)
 
     # Maintain a record of previous position
     copy!(state.x_previous, state.x)
@@ -185,7 +185,7 @@ function update_state!{T}(d, state::LBFGSState{T}, method::LBFGS)
     end
 
     # Save old f and g values to prepare for update_g! call
-    copy!(state.g_previous, grad(d))
+    copy!(state.g_previous, gradient(d))
     lssuccess == false # break on linesearch error
 end
 
@@ -193,7 +193,7 @@ end
 function update_h!(d, state, method::LBFGS)
     # Measure the change in the gradient
     @simd for i in 1:state.n
-        @inbounds state.dg[i] = grad(d, i) - state.g_previous[i]
+        @inbounds state.dg[i] = gradient(d, i) - state.g_previous[i]
     end
 
     # Update the L-BFGS history of positions and gradients
