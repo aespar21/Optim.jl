@@ -5,7 +5,7 @@
     g! = problem.g!
     h! = problem.h!
     initial_x = problem.initial_x
-    d2 = Differentiable(f, g!, initial_x)
+    d2 = OnceDifferentiable(f, g!, initial_x)
     d3 = TwiceDifferentiable(f, g!, h!, initial_x)
 
     for method in (NelderMead(), SimulatedAnnealing())

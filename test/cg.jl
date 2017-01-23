@@ -2,7 +2,7 @@
 	# Test Optim.cg for all differentiable functions in Optim.UnconstrainedProblems.examples
 	for (name, prob) in Optim.UnconstrainedProblems.examples
 		if prob.isdifferentiable
-			df = Differentiable(prob.f, prob.g!, prob.initial_x)
+			df = OnceDifferentiable(prob.f, prob.g!, prob.initial_x)
 			res = Optim.optimize(df, prob.initial_x, ConjugateGradient())
 				@test norm(Optim.minimizer(res) - prob.solutions) < 1e-2
 		end
@@ -19,7 +19,7 @@
 
 	srand(1)
 	B = rand(2,2)
-	df = Optim.Differentiable(X -> objective(X, B), (X, G) -> objective_gradient!(X, G, B), rand(2,2))
+	df = Optim.OnceDifferentiable(X -> objective(X, B), (X, G) -> objective_gradient!(X, G, B), rand(2,2))
 	results = Optim.optimize(df, rand(2,2), ConjugateGradient())
 	@test Optim.converged(results)
 	@test Optim.minimum(results) < 1e-8
