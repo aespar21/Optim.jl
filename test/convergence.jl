@@ -42,7 +42,3 @@ end
 
     # should check all other methods as well
 end
-
-@testset "iteration and call limits" begin
-
-end
