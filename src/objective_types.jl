@@ -108,7 +108,7 @@ function TwiceDifferentiable{T}(f, x_seed::Vector{T}; method = :finitediff)
             return f(x)
         end
         function h!(x::Vector, storage::Matrix)
-            Calculus.finite_difference_hessian!(x->(f_calls[1]+=1;f(x)), x, storage, :central)
+            Calculus.finite_difference_hessian!(x->(f_calls[1]+=1;f(x)), x, storage)
             return
         end
     elseif method == :forwarddiff
