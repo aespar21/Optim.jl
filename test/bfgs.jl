@@ -1,10 +1,15 @@
 @testset "BFGS" begin
-    for use_autodiff in (false, true)
+    for diff in (:analytic, :finitediff, :forwarddiff)
         for (name, prob) in Optim.UnconstrainedProblems.examples
             if prob.isdifferentiable
-                f_prob = prob.f
-                res = Optim.optimize(f_prob, prob.initial_x, BFGS(), Optim.Options(autodiff = use_autodiff))
-                @test norm(Optim.minimizer(res) - prob.solutions) < 1e-2
+                if diff == :analytic
+                    res = Optim.optimize(prob.f, prob.initial_x, BFGS())
+                    @test norm(Optim.minimizer(res) - prob.solutions) < 1e-2
+                else
+                    od = OnceDifferentiable(prob.f, prob.initial_x, method = diff)
+                    res = Optim.optimize(od, prob.initial_x, BFGS())
+                    @test norm(Optim.minimizer(res) - prob.solutions) < 1e-2
+                end
             end
         end
     end
