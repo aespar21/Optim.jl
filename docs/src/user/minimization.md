@@ -25,10 +25,10 @@ using central finite differencing:
 ```jl
 optimize(f, [0.0, 0.0], LBFGS())
 ```
-Alternatively, the `autodiff` keyword will use atomatic differentiation to construct
-the gradient.
+It is also possible to use [ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl) to perform automatic differentiation. To do that, we have to create an instance of the `OnceDifferentiable` type. In the constructor we simply use the `method = :forwarddiff` keyword, and pass that to `optimize`
 ```jl
-optimize(f, [0.0, 0.0], LBFGS(), Optim.Options(autodiff = true))
+od = OnceDifferentiable(f, [0.0, 0.0]; method = :forwarddiff)
+optimize(od, [0.0, 0.0], LBFGS())
 ```
 For better performance and greater precision, you can pass your own gradient function. For the Rosenbrock example, the analytical gradient can be shown to be:
 ```jl
@@ -75,7 +75,7 @@ A primal interior-point algorithm for simple "box" constraints (lower and upper 
 lower = [1.25, -2.1]
 upper = [Inf, Inf]
 initial_x = [2.0, 2.0]
-results = optimize(OnceDifferentiable(f, g!), initial_x, lower, upper, Fminbox(), optimizer = GradientDescent)
+results = optimize(OnceDifferentiable(f, g!, initial_x), initial_x, lower, upper, Fminbox(), optimizer = GradientDescent)
 ```
 
 This performs optimization with a barrier penalty, successively scaling down the barrier coefficient and using the chosen `optimizer` for convergence at each step. Notice that the `Optimizer` type, not an instance should be passed. This means that the keyword should be passed as `optimizer = GradientDescent` not `optimizer = GradientDescent()`, as you usually would.

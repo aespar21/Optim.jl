@@ -29,7 +29,6 @@ end
 
 function initial_state{T}(method::GradientDescent, options, d, initial_x::Array{T})
     value_grad!(d, initial_x)
-
     GradientDescentState("Gradient Descent",
                          length(initial_x),
                          copy(initial_x), # Maintain current state in state.x

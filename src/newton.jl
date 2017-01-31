@@ -6,7 +6,7 @@ end
 Newton(; linesearch::Function = LineSearches.hagerzhang!) =
 Newton(linesearch)
 =#
-function Newton(; linesearch! = nothing, linesearch::Function = LineSearches.hagerzhang!,
+function Newton(; linesearch! = nothing, linesearch = LineSearches.hagerzhang!,
                 resetalpha = true)
     linesearch = get_linesearch(linesearch!, linesearch)
     Newton(linesearch,resetalpha)
@@ -24,8 +24,6 @@ end
 
 function initial_state{T}(method::Newton, options, d, initial_x::Array{T})
     n = length(initial_x)
-    # Maintain current gradient in gr
-    s = similar(initial_x)
     x_ls, g_ls = similar(initial_x), similar(initial_x)
     value_grad!(d, initial_x)
     hessian!(d, initial_x)

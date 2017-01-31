@@ -47,24 +47,31 @@ julia> Optim.minimizer(optimize(f, g!, h!, initial_x, Newton()))
  1.0
  1.0
 ```
-This is indeed the case. Now let us use finite differences for BFGS (we cannot
-    get finite difference Hessians in Optim).
+This is indeed the case. Now let us use finite differences for BFGS.
 ```jlcon    
 julia> Optim.minimizer(optimize(f, initial_x, BFGS()))
 2-element Array{Float64,1}:
  1.0
  1.0
 ```
-Still looks good. Returning to automatic differentiation, let us try both solvers using this
-method. We enable automatic differentiation by adding `autodiff = true` to our
+Still looks good, and for Newton's method
+```jlcon    
+julia> Optim.minimizer(optimize(f, g!, initial_x, Newton()))
+2-element Array{Float64,1}:
+ 1.0
+ 1.0
+```
+Returning to automatic differentiation, let us try both solvers using this
+method. We enable automatic differentiation by constructing a type instance of either `OnceDifferentiable`
+or `TwiceDifferentiale` using the `method = :forwarddiff` keyword.
 `Optim.Options`.
 ```jlcon
-julia> Optim.minimizer(optimize(f, initial_x, BFGS(), Optim.Options(autodiff = true)))
+julia> Optim.minimizer(optimize(OnceDifferentiable(f, initial_x; method=:forwarddiff), initial_x, BFGS()))
 2-element Array{Float64,1}:
  1.0
  1.0
 
-julia> Optim.minimizer(optimize(f, initial_x, Newton(), Optim.Options(autodiff = true)))
+julia> Optim.minimizer(optimize(TwiceDifferentiable(f, initial_x; method=:forwarddiff), initial_x, Newton()))
 2-element Array{Float64,1}:
  1.0
  1.0

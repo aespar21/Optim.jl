@@ -222,8 +222,6 @@ type NewtonTrustRegionState{T,N,G}
 end
 
 function initial_state{T}(method::NewtonTrustRegion, options, d, initial_x::Array{T})
-    n = length(initial_x)
-    # Maintain current gradient in gr
     @assert(method.delta_hat > 0, "delta_hat must be strictly positive")
     @assert(0 < method.initial_delta < method.delta_hat, "delta must be in (0, delta_hat)")
     @assert(0 <= method.eta < method.rho_lower, "eta must be in [0, rho_lower)")
@@ -233,10 +231,6 @@ function initial_state{T}(method::NewtonTrustRegion, options, d, initial_x::Arra
     delta = copy(method.initial_delta)
 
     # Record attributes of the subproblem in the trace.
-    hard_case = false
-    reached_subproblem_solution = true
-    interior = true
-    lambda = NaN
     value_grad!(d, initial_x)
     hessian!(d, initial_x)
     NewtonTrustRegionState("Newton's Method (Trust Region)", # Store string with model name in state.method
@@ -246,11 +240,11 @@ function initial_state{T}(method::NewtonTrustRegion, options, d, initial_x::Arra
                          similar(gradient(d)), # Store previous gradient in state.g_previous
                          T(NaN), # Store previous f in state.f_x_previous
                          similar(initial_x), # Maintain current search direction in state.s
-                         hard_case,
-                         reached_subproblem_solution,
-                         interior,
+                         false, # hard case
+                         false, # reached subproblem solution
+                         true, # interior
                          T(delta),
-                         lambda,
+                         T(NaN), #lambda
                          method.eta, # eta
                          0., # state.rho
                          d) # Maintain a cache for line search results in state.lsr
@@ -258,8 +252,6 @@ end
 
 
 function update_state!{T}(d, state::NewtonTrustRegionState{T}, method::NewtonTrustRegion)
-
-
     # Find the next step direction.
     m, state.interior, state.lambda, state.hard_case, state.reached_subproblem_solution =
         solve_tr_subproblem!(gradient(d), hessian(d), state.delta, state.s)

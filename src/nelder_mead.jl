@@ -199,8 +199,8 @@ function update_state!{F, T}(f::F, state::NelderMeadState{T}, method::NelderMead
         end
         # shift all order indeces, and wrap the last one around to the first
         i_highest = state.i_order[m]
-        @inbounds for i = m:-1:2
-            state.i_order[i] = state.i_order[i-1]
+        @simd for i = m:-1:2
+            @inbounds state.i_order[i] = state.i_order[i-1]
         end
         state.i_order[1] = i_highest
     elseif f_reflect < f_second_highest

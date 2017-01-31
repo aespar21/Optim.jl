@@ -48,6 +48,8 @@ end
 
 optimize(f::Function, initial_x::Array, options::Options) = optimize(NonDifferentiable(f, initial_x), initial_x, NelderMead(), options)
 optimize(f::Function, initial_x::Array, method::Optimizer, options::Options = Options()) = optimize(NonDifferentiable(f, initial_x), initial_x, method, options)
+optimize(f::Function, initial_x::Array, method::FirstOrderSolver,  options::Options = Options()) = optimize(OnceDifferentiable(f, initial_x), initial_x, method, options)
+optimize(f::Function, initial_x::Array, method::SecondOrderSolver, options::Options = Options()) = optimize(TwiceDifferentiable(f, initial_x), initial_x, method, options)
 optimize(d::OnceDifferentiable, initial_x::Array, options::Options) = optimize(d, initial_x, BFGS(), options)
 optimize(d::TwiceDifferentiable, initial_x::Array, options::Options) = optimize(d, initial_x, Newton(), options)
 
@@ -85,56 +87,11 @@ function optimize{F<:Function, G<:Function, H<:Function}(f::F,
     optimize(d, initial_x, Newton(), options)
 end
 
-function optimize{F<:Function, T, M <: Union{FirstOrderSolver, SecondOrderSolver}}(f::F,
-                  initial_x::Array{T},
-                  method::M,
-                  options::Options)
-    if !options.autodiff
-        if M <: FirstOrderSolver
-            d = OnceDifferentiable(f, initial_x)
-        else
-            error("No gradient or Hessian was provided. Either provide a gradient and Hessian, set autodiff = true in the Options if applicable, or choose a solver that doesn't require a Hessian.")
-        end
-    else
-        gcfg = ForwardDiff.GradientConfig(initial_x)
-        g! = (x, out) -> ForwardDiff.gradient!(out, f, x, gcfg)
-
-        fg! = (x, out) -> begin
-            gr_res = DiffBase.DiffResult(zero(T), out)
-            ForwardDiff.gradient!(gr_res, f, x, gcfg)
-            DiffBase.value(gr_res)
-        end
-
-        if M <: FirstOrderSolver
-            d = OnceDifferentiable(f, g!, fg!, initial_x)
-        else
-            hcfg = ForwardDiff.HessianConfig(initial_x)
-            h! = (x, out) -> ForwardDiff.hessian!(out, f, x, hcfg)
-            d = TwiceDifferentiable(f, g!, fg!, h!, initial_x)
-        end
-    end
-
-    optimize(d, initial_x, method, options)
-end
-
 function optimize(d::OnceDifferentiable,
                   initial_x::Array,
-                  method::Newton,
+                  method::Union{Newton, NewtonTrustRegion},
                   options::Options)
     optimize(TwiceDifferentiable(d), initial_x, method, options)
-end
-
-function optimize(d::OnceDifferentiable,
-                  initial_x::Array,
-                  method::NewtonTrustRegion,
-                  options::Options)
-    if !options.autodiff
-        error("No Hessian was provided. Either provide a Hessian, set autodiff = true in the Options if applicable, or choose a solver that doesn't require a Hessian.")
-    else
-        hcfg = ForwardDiff.HessianConfig(initial_x)
-        h! = (x, out) -> ForwardDiff.hessian!(out, d.f, x, hcfg)
-    end
-    optimize(TwiceDifferentiable(d.f, d.g!, d.fg!, h!, initial_x), initial_x, method, options)
 end
 
 update_g!(d, state, method) = nothing
